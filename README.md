@@ -15,6 +15,7 @@ v005 Added circle and tested to create physical circle.  Added untested prompt/c
 
 v006 Added save / load settings to config.txt
 
+v007 Added output to output1.gcode.  Overwrites without prompting.
 
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
