@@ -11,13 +11,13 @@ def rectanglecreator(xxpath, yypath, zzpath):
    ystart = float(raw_input("Enter Y Start:"))
    zstart = float(raw_input("Enter Z Start:"))
        
-   xxpath.append(0.0) #first point at origin
-   yypath.append(0.0)
-   zzpath.append(0.0)
+   #xxpath.append(0.0) #first point at origin
+   #yypath.append(0.0)
+   #zzpath.append(0.0)
 
-   xxpath.append(0)  #Then lift Z
-   yypath.append(0)
-   zzpath.append(zstart)  
+   #xxpath.append(0)  #Then lift Z
+   #yypath.append(0)
+   #zzpath.append(zstart)  
 
    xxpath.append(xstart)  #Then move to start position
    yypath.append(ystart)
@@ -52,13 +52,13 @@ def circlecreator(xxpath, yypath, zzpath):
    ewidth = float(raw_input("Extrusion width"))
    anglestep = 2 * math.pi / N
 
-   xxpath.append(0)
-   yypath.append(0)
-   zzpath.append(0)
+   #xxpath.append(0)
+   #yypath.append(0)
+   #zzpath.append(0)
 
-   xxpath.append(0)
-   yypath.append(0)
-   zzpath.append(layer1)
+   #xxpath.append(0)
+   #yypath.append(0)
+   #zzpath.append(layer1)
 
    xxpath.append(centerx+radius)
    yypath.append(centery)
@@ -71,6 +71,40 @@ def circlecreator(xxpath, yypath, zzpath):
       zzpath.append(layer1)
    return height
 
-                  
+def inputpath(xxpath, yypath, zzpath):
+   print "This function can create a custom 2d path input coordinates."
+   inputpathfork = raw_input( "[L]oad file, or [K]eyboard input?")
+   if inputpathfork == "K" or inputpathfork == "k":
+      z1 = float(raw_input("1st layer height")) #Provisions should be made for this to be easily changed
+      #xxpath.append(0.0)
+      #yypath.append(0.0)
+      #zzpath.append(0.0)
+      
+      #xxpath.append(0.0)
+      #yypath.append(0.0)
+      #zzpath.append(z1)                       
+
+      print "9999 to stop input"
+      print "Current version expects last coordinate to match first."
+      quitflag = 0
+      while quitflag == 0:
+         xxinput = float(raw_input("x"))
+         if xxinput == 9999:
+            quitflag = 1
+         else:
+            xxpath.append(xxinput)
+         yyinput = float(raw_input("y"))
+         if yyinput == 9999 or xxinput == 9999:
+            quitflag = 1
+         else:
+            yypath.append(yyinput)
+            zzpath.append(z1)
+      
+   return float(raw_input("Height?"))
+      
+         
+      
+         
+      
    
    
