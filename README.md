@@ -5,17 +5,19 @@ An open source g-code generator for 3d printers that makes parts from a single c
 
 Still puts the last instruction at the start.
 
-v002 hardcoded parameters for a 1cm square/cube
+a002 hardcoded parameters for a 1cm square/cube
 
-v003 User-entered parameters for an arbitrary rectangle and printer.
+a003 User-entered parameters for an arbitrary rectangle and printer.
 
-v004 Actually tested to produce a physical rectangle.  Corrected G-code syntax in final line
+a004 Actually tested to produce a physical rectangle.  Corrected G-code syntax in final line
 
-v005 Added circle and tested to create physical circle.  Added untested prompt/choice for the shape.  Moved rectangle function and circle to shapes.py
+a005 Added circle and tested to create physical circle.  Added untested prompt/choice for the shape.  Moved rectangle function and circle to shapes.py
 
-v006 Added save / load settings to config.txt
+a006 Added save / load settings to config.txt
 
-v007 Added output to output1.gcode.  Overwrites without prompting.
+a007 Added output to output1.gcode.  Overwrites without prompting.
+
+a008 Added and tested keyboard input coordinates.  Created save function for any shape, but no load functionality yet.
 
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
