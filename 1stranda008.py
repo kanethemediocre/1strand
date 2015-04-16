@@ -1,5 +1,5 @@
 import Shapes
-print "Gcode generator Alpha 0.0004"
+print "Gcode generator Alpha 0.0008"
 xpath = []  #These are initialized and default values
 ypath = []
 zpath = []
@@ -101,7 +101,7 @@ zpath.append(0.0)
 
 xpath.append(0)  #Then lift Z
 ypath.append(0)
-zpath.append(1.0) #This is not the 1st layer height.  That is input later
+zpath.append(LayerHeight) #This is not the 1st layer height.  That is input later
 #But this is a decent starting position for Z.
 
 #The rectangle code is in Shapes.py.  I'm trying to build a library there.
@@ -151,16 +151,9 @@ for x in range(2, int(Height/LayerHeight)+1): #Each layer
       ypath.append(ypath[y+1])    #Put in the Y coordinate from the yth step of layer 1
       zpath.append(x*LayerHeight) #Put in the Z coordinate of the next layer
 
-      
-
-
-
+ 
 if len(xpath) != len(ypath) or len(xpath) != len(zpath) or len(ypath) != len(zpath):
    print "Error-Pathlength Mismatch"
-#print "x, y, and z path"
-#print xpath
-#print ypath
-#print zpath
 
 distance=0.0
 
