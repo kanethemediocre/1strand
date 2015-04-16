@@ -17,7 +17,7 @@ a006 Added save / load settings to config.txt
 
 a007 Added output to output1.gcode.  Overwrites without prompting.
 
-a008 Added and tested keyboard input coordinates.  Created save function for any shape, but no load functionality yet.
+a008 Added and tested keyboard input coordinates.  Created save and function for any shape.
 
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
