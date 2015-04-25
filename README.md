@@ -2,6 +2,7 @@
 
  1strand
 An open source g-code generator for 3d printers that makes parts from a single continuous extrudate.
+Current files: Shapes.py, 1stranda009.py, printconfig.py
 
 Major known problems:
 Circles and rectangles follow the path of their alleged outer coordinates, so everything is big by half an extrusion width
