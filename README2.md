@@ -3,7 +3,14 @@
  1strand
 An open source g-code generator for 3d printers that makes parts from a single continuous extrudate.
 
-Still puts the last instruction at the start.
+Major known problems:
+Circles and rectangles follow the path of their alleged outer coordinates, so everything is big by half an extrusion width
+Feedrate is set to 480 hardcoded.  My printer seems to move much slower than 480mm/s, but much faster than 480mm/min 
+My printer also makes angry noises at the start of the print, probably from the plain Z move 
+Program crashes when input is unexpectedly not floating point number
+No extrusion "priming", skirt or brim functions.
+
+
 
 a002 hardcoded parameters for a 1cm square/cube
 
