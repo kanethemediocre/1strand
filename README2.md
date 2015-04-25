@@ -19,6 +19,8 @@ a007 Added output to output1.gcode.  Overwrites without prompting.
 
 a008 Added and tested keyboard input coordinates.  Created save and function for any shape.
 
+a009 User interface has a main program loop, and abstracts printer option handling to printconfig.py
+
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
 Create objects with paths that end somewhere other than they start, but reverse the process each layer so the strand isn't broken
