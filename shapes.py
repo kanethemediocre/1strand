@@ -137,8 +137,19 @@ def loadfile(xxpath, yypath, zzpath):
    filename1.close()
    Height = float(raw_input("Height?"))
    return Height       
-            
-            
+def savefile(xxpath, yypath, zzzpath):
+   savefilename = raw_input("Enter filename")
+   shape = open(savefilename, "wb")
+   for x in range(len(xxpath)):
+      shape.write(str(xxpath[x]));
+      shape.write("\n");
+      shape.write(str(yypath[x]));
+      shape.write("\n");
+      shape.write(str(zzpath[x]));
+      shape.write("\n");
+      shape.write("zzz\n");
+   shape.close()
+   return savefilename           
             
          
       
