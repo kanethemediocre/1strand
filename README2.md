@@ -29,6 +29,8 @@ a008 Added and tested keyboard input coordinates.  Created save and function for
 
 a009 User interface has a main program loop, and abstracts printer option handling to printconfig.py
 
+Bushinga001 Standalone tool for bushings.  Currently produces seam and Z-shift point, mostly hardcoded inputs.
+
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
 Create objects with paths that end somewhere other than they start, but reverse the process each layer so the strand isn't broken
