@@ -29,7 +29,10 @@ a008 Added and tested keyboard input coordinates.  Created save and function for
 
 a009 User interface has a main program loop, and abstracts printer option handling to printconfig.py
 
-Bushinga001 Standalone tool for bushings.  Currently produces seam and Z-shift point, mostly hardcoded inputs.
+bushinga001 Standalone tool for bushings.  Currently produces seam and Z-shift point, mostly hardcoded inputs.
+
+bushinga002 Mostly blended out seam at Z-shift with a 0, 0.25, 0.75, 1.0 movement.
+
 
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
