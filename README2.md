@@ -2,7 +2,11 @@
 
  1strand
 An open source g-code generator for 3d printers that makes parts from a single continuous extrudate.
-Current files: Shapes.py, 1stranda009.py, printconfig.py
+Current files: 
+Shapes.py, 1stranda009.py, printconfig.py are one package working towards a complex design tool.
+bushinga002 standalone bushing program.  Pick an ID, OD, and height, printer settings are hardcoded
+BushingDeCruft2 is an effort to abstract more of the work into functions.  Doesn't work yet.
+
 
 Major known problems:
 Circles and rectangles follow the path of their alleged outer coordinates, so everything is big by half an extrusion width
