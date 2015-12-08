@@ -2,9 +2,12 @@
 
  1strand
 An open source g-code generator for 3d printers that makes parts from a single continuous extrudate.
+
 Current files: 
 Shapes.py, 1stranda009.py, printconfig.py are one package working towards a complex design tool.
-bushinga002 standalone bushing program.  Pick an ID, OD, and height, printer settings are hardcoded
+
+bushinga003 standalone bushing program.  Pick an ID, OD, and height, printer settings are hardcoded.
+
 BushingDeCruft2 is an effort to abstract more of the work into functions.  Doesn't work yet.
 
 
@@ -37,6 +40,7 @@ bushinga001 Standalone tool for bushings.  Currently produces seam and Z-shift p
 
 bushinga002 Mostly blended out seam at Z-shift with a 0, 0.25, 0.75, 1.0 movement.
 
+bushinga003 Fixed bug with inside seam blend, and added a +10 z-movement to the end of print.
 
 Immediate Goals:
 Perimeter following coordinates from spreadsheet
