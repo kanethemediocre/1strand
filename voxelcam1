@@ -1,0 +1,224 @@
+from graphics import *
+import math
+from tkinter import *
+
+class voxelfield:
+    i = 12345
+    x = [0.0]
+    y = [0.0]
+    z = [0.0]
+    direction = 0 #0=NE, 1=NW (broken), 2=SW, 3=SE
+    def orthorender(self, direction, dox, doy):
+        #dox = 300
+        #doy = 400
+        picture = [Point(0,0)]
+        ii = 1
+        while ii<len(self.x) and direction == 0: #Looking NE 
+            xxx = dox + ((self.x[ii]*0.86)-(self.y[ii]*0.86))*2
+            yyy = doy - ((self.y[ii]*0.5)+(self.x[ii]*0.5)+self.z[ii])*2
+            picture.append(Point(xxx,yyy))
+            ii=ii+1
+        while ii<len(self.x) and direction == 1: #Looking NW doesn't work.  Fix later.
+            xxx = dox + ((self.y[ii]*0.86)-(self.x[ii]*0.86))*2
+            yyy = doy - ((self.y[ii]*0.5)-(self.x[ii]*0.5)+self.z[ii])*2
+            picture.append(Point(xxx,yyy))
+            ii=ii+1
+        while ii<len(self.x) and direction == 2:#Looking SW 
+            xxx = dox + ((self.y[ii]*0.86)-(self.x[ii]*0.86))*2
+            yyy = doy - ((-1*self.y[ii]*0.5)-(self.x[ii]*0.5)+self.z[ii])*2
+            picture.append(Point(xxx,yyy))
+            ii=ii+1
+        while ii<len(self.x) and direction == 3:#Looking SE
+            xxx = dox + (-1*(self.x[ii]*0.86)-(self.y[ii]*0.86))*2
+            yyy = doy - ((self.x[ii]*0.5)-(self.y[ii]*0.5)+self.z[ii])*2
+            picture.append(Point(xxx,yyy))
+            ii=ii+1
+        return picture
+    def addvectangle(self,cx,cy,cz,sx,sy,sz,step): #c is corner location, s is size, step is float step size
+        ix = 0.0 #FP iterator initialize 
+        iy = 0.0
+        iz = 0.0
+        while iz < sz:
+            while iy < sy:
+                while ix < sx:
+                    self.x.append(ix+cx)
+                    self.y.append(iy+cy)
+                    self.z.append(iz+cz)
+                    ix=ix+step
+                ix = 0.0
+                iy=iy+step
+            iy=0.0
+            iz=iz+step
+    def boundary(self, step):
+        bx = [0.0] #Set of boundary coordinates
+        by = [0.0]
+        bz = [0.0]
+        j=1
+        while j<len(self.x):
+            k=0
+            sbx = [0.0]
+            sby = [0.0]
+            sbz = [0.0]
+            while k<len(self.x):
+                xx = self.x[j]
+                yy = self.y[j]
+                zz = self.z[j]
+                xxxx = self.x[k]
+                yyyy = self.y[k]
+                zzzz = self.z[k]
+                if xxxx<(xx+step*1.1) and xxxx>(xx-step*1.1) and yyyy<(yy+step*1.1) and yyyy>(yy-step*1.1) and zzzz<(zz+step*1.1) and zzzz>(zz-step*1.1):
+                   sbx.append(xxxx)
+                   sby.append(yyyy)
+                   sbz.append(zzzz)
+                k=k+1
+            if len(sbx) < 27:
+                bx.append(xx)
+                by.append(yy)
+                bz.append(zz)
+            j=j+1
+        print(len(bx))
+        print(len(self.x))
+        edges = voxelfield()
+        edges.x = bx
+        edges.y = by
+        edges.z = bz
+        return(edges)
+    def insideedge(self, step):
+            bx = [0.0] #Set of boundary coordinates
+            by = [0.0]
+            bz = [0.0]
+            j=1
+            while j<len(self.x):
+                k=1
+                sbx = [0.0]
+                sby = [0.0]
+                sbz = [0.0]
+                while k<len(self.x):
+                    xx = self.x[j]
+                    yy = self.y[j]
+                    zz = self.z[j]
+                    xxxx = self.x[k]
+                    yyyy = self.y[k]
+                    zzzz = self.z[k]
+                    if xxxx<(xx+step*1.1) and xxxx>(xx-step*1.1) and yyyy<(yy+step*1.1) and yyyy>(yy-step*1.1) and zzzz<(zz+step*1.1) and zzzz>(zz-step*1.1):
+                        sbx.append(xxxx)
+                        sby.append(yyyy)
+                        sbz.append(zzzz)
+                    k=k+1
+                if (len(sbx) < 26 and len(sbx) > 23):
+                    bx.append(xx)
+                    by.append(yy)
+                    bz.append(zz)
+                j=j+1
+            print(len(bx))
+            print(len(self.x))
+            edges = voxelfield()
+            edges.x = bx
+            edges.y = by
+            edges.z = bz
+            return(edges)
+    def outsideedge(self, step):
+            bx = [0.0] #Set of boundary coordinates
+            by = [0.0]
+            bz = [0.0]
+            j=1
+            while j<len(self.x):
+                k=1
+                sbx = [0.0]
+                sby = [0.0]
+                sbz = [0.0]
+                while k<len(self.x):#Everything in this loop happens n^2
+                    xx = self.x[j]
+                    yy = self.y[j]
+                    zz = self.z[j]
+                    xxxx = self.x[k]
+                    yyyy = self.y[k]
+                    zzzz = self.z[k]
+                    if xxxx<(xx+step*1.1) and xxxx>(xx-step*1.1) and yyyy<(yy+step*1.1) and yyyy>(yy-step*1.1) and zzzz<(zz+step*1.1) and zzzz>(zz-step*1.1):
+                        sbx.append(xxxx)
+                        sby.append(yyyy)
+                        sbz.append(zzzz)
+                    k=k+1
+                if (len(sbx) < 18):
+                    bx.append(xx)
+                    by.append(yy)
+                    bz.append(zz)
+                j=j+1
+            print(len(bx))
+            print(len(self.x))
+            edges = voxelfield()
+            edges.x = bx
+            edges.y = by
+            edges.z = bz
+            return(edges)
+    def subtractvectangle(self,cx,cy,cz,sx,sy,sz):
+        i=1
+        while i<len(self.x):
+            if self.x[i]>=cx and self.x[i]<=cx+sx and self.y[i]>=cy and self.y[i]<=cy+sy and self.z[i]>=cz and self.z[i]<=cz+sz :
+                self.x[i] = -1000
+                self.y[i] = -1000
+                self.z[i] = -1000
+            i=i+1
+        self.x.remove(-1000)
+        #j=0
+        #print(len(shitlist))
+        #while j<len(shitlist):
+        #    poop = shitlist[j]
+        #    del self.x[poop]
+        #    del self.y[poop]
+        #    del self.z[poop]
+        #    print(j)
+        #    print(shitlist[j])
+        #    j=j+1
+    def subtractcylinder(self, cx, cy, cz, h, r):
+        i=1
+        while i<len(self.x):
+            vr2 = (cx-self.x[i])*(cx-self.x[i]) + (cy-self.y[i])*(cy-self.y[i])
+            r2 = r*r
+            if vr2<=r2 and self.z[i]>=cz and self.z[i]<=h
+                self.x[i] = -1000
+                self.y[i] = -1000
+                self.z[i] = -1000
+            i=i+1
+        self.x.remove(-1000)
+            
+def main():
+    win = GraphWin('Orthogonal Rendering Test', 800, 600) # give title and dimensions
+    cx = 2.0 #Corner location
+    cy = 2.0
+    cz = 2.0
+    sx = 50.0 #Size
+    sy = 50.0
+    sz = 12.0 
+    step = 1.0 #Distance between voxels on grid
+    #direction = 0 #0=NE, 1=NW, 2=SW, 3=SE
+    #direction = int(input("0 for NE, 1 for NW, 2 for SW, 3 for SE"))
+    choochoo = voxelfield()
+    choochoo.addvectangle(cx,cy,cz,sx,sy,sz,step)
+    choochoo.subtractvectangle(17.0,0.0,9.0,16.0,80.0,10.0)
+    etest = choochoo.outsideedge(step)
+    dankcheese1 = etest.orthorender(0, 100, 400)
+    dankcheese2 = etest.orthorender(1, 300, 400)
+    dankcheese3 = etest.orthorender(2, 500, 400)
+    dankcheese4 = etest.orthorender(3, 700, 400)
+
+
+    
+    #y=1
+    #while y<len(thedankcheese):
+    #    thedankcheese[y].draw(win)
+    #    y=y+1
+
+    y=1
+    while y<len(dankcheese1):
+        dankcheese1[y].draw(win)
+        dankcheese2[y].draw(win)
+        dankcheese3[y].draw(win)
+        dankcheese4[y].draw(win)
+        
+        y=y+1
+
+
+main()
+
+
