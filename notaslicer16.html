@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8"> 
+    <title>Not a slicer v16 by KaneTheMediocre</title>
+    <style></style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="800"></canvas>
+    <script>
+        // declare variables
+        const FPS = 30;
+        var canvas, context;
+        canvas = document.getElementById("gameCanvas"); //canvas is the draw sauce.
+        context = canvas.getContext("2d");
+        setInterval(update, 1000 / FPS);// set up interval (game loop)
+		function showchart(chartdataxy, xspace, yspace, x,y){ //displays chart with specified cell dimensions and position
+			 var i = 0 //assumes each column is same length, otherwise error
+			 var j = 0;
+			 while (i<chartdataxy.length){
+				var cellposx = x+i*xspace;
+				j = 0;
+				while (j<chartdataxy[0].length){
+					var cellposy = y+j*yspace;
+					context.fillText(chartdataxy[i][j],cellposx,cellposy);
+					j=j+1;
+					}
+				i=i+1;
+				}
+			 }
+		//var cxytest = [ ["first", "column", "of", "words"], ["2nd", "column", "of", "words"]       ];
+		//showchart(cxytest, 64, 16, 300,300);
+		function draworthopath(px,py, xlist, ylist, size, color1, color2){
+			var fx = px + xlist[0]*size; 
+			var fy = py + ylist[0]*size;
+			context.strokeStyle = color1;
+			context.beginPath();
+			context.moveTo(fx, fy); 
+			i = xlist.length;
+			while(i>0){
+				i=i-1;
+				var ix = px + xlist[i]*size;
+				var iy = py + ylist[i]*size;
+				context.lineTo(ix, iy);
+				}
+			context.stroke();
+			context.strokeStyle = color2;
+			context.beginPath()
+			context.moveTo(fx,fy);
+			context.lineTo(xlist[xlist.length-1]*size,ylist[ylist.length-1]*size);
+			context.stroke();
+			}
+var mousex = 0;
+var mousey = 0;
+var lastpointx = 0;
+var lastpointy = 0;
+var selectindex = 0;
+var scale = 8; //number of pixels per millimeter
+var snap = 2; //snap size in mm
+var grid = 1; //Grid state, 0 = off, 1 = on, 2 = one grid every 2 snaps
+var xloop = [];
+var yloop = [];
+var gcode = "";
+var layerheight = 0.5;
+var z = 0; //First layer is 1 layer in Z
+var baseheight = 0;
+var zheight = 16;
+var nozzle = 1;
+var qqq = 10; //qqq is the new height
+var filament = 1.75;
+var filamentarea = filament * filament * 3.14159 / 4.0;
+var GooCoefficient = layerheight * nozzle / filamentarea;
+
+function update() {
+	context.fillStyle = "black";//Background is black
+	context.fillRect(0, 0, canvas.width, canvas.height); //rectangle the size of the canvas.
+	context.strokeStyle = "darkviolet";//grid color
+	context.lineWidth = 1;
+	if (grid > 0){
+		var gspace = snap*scale*grid; //Grid size of 1 indicates a intersection at every snap
+		var gx = 0; //grid coords in pixels
+		var gy = 0;
+		context.beginPath()
+		while (gx<canvas.width){
+			gx = gx+gspace;
+			context.moveTo(gx,0);
+			context.lineTo(gx,canvas.height);
+			}
+		context.stroke();
+		context.beginPath()
+		while (gy<canvas.height){
+			gy = gy+gspace;
+			context.moveTo(0,gy);
+			context.lineTo(canvas.width,gy);
+			}
+		context.stroke();
+		}
+	context.fillStyle = "white";
+	context.fillText("Spacebar for new point at mouse cursor, arrow keys adjust point position, [ and ] change point selection, G toggles grid, s key saves text to Gcode variable and displays line 1, use button to download",100,8);
+	context.fillText("mousex",8,8);
+	context.fillText(mousex/scale,48,8);
+	context.fillText("mousey",8,24);
+	context.fillText(mousey/scale,48,24);
+	draworthopath(0,0,xloop,yloop,scale,"red","yellow");
+	if (xloop.length<1){
+		context.fillText("No points entered",8,48);
+	}else{
+		context.fillText("lastx",8,48);
+		context.fillText(xloop[xloop.length-1],48,48);
+		context.fillText("lasty",8,64);
+		context.fillText(yloop[yloop.length-1],48,64);	
+		}
+		if (xloop.length<1){
+		context.fillText("No points selected",8,88);
+	}else{
+		context.fillText("selectindex",8,88);
+		context.fillText(selectindex,120,88);	
+		context.fillText("selected x",8,104);
+		context.fillText(xloop[selectindex],120,104);
+		context.fillText("selected y",8,120);
+		context.fillText(yloop[selectindex],120,120);	
+		context.beginPath(); //Indicates location of selected point
+		context.strokeStyle = "orange"; 
+		context.arc(xloop[selectindex]*scale,yloop[selectindex]*scale, 8, 0, 2 * Math.PI, false); //draws the circle
+		context.lineWidth = 2; //circle is 2x thicc
+		context.stroke();	//ok now actually draw it.
+
+		}
+	context.fillText("scale",8,200);
+	context.fillText(scale,48,200);	
+	context.fillText("snap",8,216);
+	context.fillText(snap,48,216);	
+	context.fillText("height",8,232);
+	context.fillText(zheight,48,232);	
+	context.fillText("grid size",8,248);
+	context.fillText(grid,48,248);		
+	
+	context.fillText(gcode,8,600);
+//////////////////////Mouse input handling//////////////////////////////////////////
+document.addEventListener("mousemove", mouseMoveHandler, false);
+function mouseMoveHandler(e) {
+	mousex = e.clientX;
+	mousey =  e.clientY;
+}
+//document.addEventListener('click',(event) => {
+//    console.log('clicked');
+//});
+////////////////////////////////////////////////////////Keyboard input/////////////////////////////////////
+window.addEventListener("keydown", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  switch (event.key) { 
+    case " ":
+		var clickx = mousex/scale;
+		var snappedx = snap*Math.floor(clickx/snap);
+		var clicky = mousey/scale;
+		var snappedy = snap*Math.floor(clicky/snap)
+      xloop.push(snappedx);
+	  yloop.push(snappedy);
+      break;   
+	case "]": 
+		if (selectindex < xloop.length-1){ selectindex = selectindex+1; }
+		else { selectindex = 0; }
+      break;
+	case "[": 
+		if (selectindex > 0 ){ selectindex = selectindex-1; }
+		else { selectindex = xloop.length-1; }
+      break;	  
+	case "Control":
+		
+		break;
+	case "g":    //grid toggle
+		if (grid==0){grid=1;}else{grid=0;}
+	  break;
+	case "s": //save gcode
+var xpath = [];
+var ypath = [];
+var zpath = [];
+var epath = [];
+var z=0;
+while (z<zheight){//For all layers (z coords)
+	z=z+layerheight;
+	xpath.push(xloop[0]);//adds first point
+	ypath.push(yloop[0]);
+	zpath.push(z);
+	var i=0
+	while (i<xloop.length-1){ //For all points in loop
+		i=i+1;
+		xpath.push(xloop[i]); //add point from xloop to xpath
+		ypath.push(yloop[i]);
+		zpath.push(z); //add z coordinate to zpath
+		}
+	}
+var i=1;
+epath.push(0);//Origin has 0 extruder position
+epath.push(0); //First point in polygon has 0 extruder position
+while (i<xpath.length-1){	
+	i=i+1;
+	var dx = xpath[i]-xpath[i-1];
+	var dy = ypath[i]-ypath[i-1];
+	var distance = Math.sqrt(dx*dx+dy*dy);
+	var estep = distance*GooCoefficient;
+	epath.push(epath[i-1]+estep);
+}
+gcode = "G28 \nG21 \nG90 \nG92 E0 \nM82";
+var i=0
+gcode = gcode + "G1 X"+xpath[0];
+gcode = gcode + " Y" + ypath[0];
+gcode = gcode + " Z" + zpath[0];
+gcode = gcode + " E" + epath[0];
+gcode = gcode + " F1200 \n"; //fixed feedrate 1200mm/min, 20mm/s
+
+while (i<xpath.length-1){
+	i=i+1;
+	gcode = gcode + "G1 X"+xpath[i];
+	gcode = gcode + " Y" + ypath[i];
+	gcode = gcode + " Z" + zpath[i];
+	gcode = gcode + " E" + epath[i];
+	gcode = gcode + " F1200 \n"; //fixed feedrate 1200mm/min, 20mm/s
+	}
+     	break;
+	case "+": 
+		scale = scale + 1;
+    	  break;		  
+	case "-": 
+		if (scale>1){scale=scale-1;}
+		break;	  
+	case "ArrowRight": 
+		xloop[selectindex]=xloop[selectindex]+snap;
+    	  break;
+	case "ArrowLeft": 
+		xloop[selectindex]=xloop[selectindex]-snap;
+    	  break;		  
+	case "ArrowUp": 
+		yloop[selectindex]=yloop[selectindex]-snap;
+     	 break;
+	case "ArrowDown": 
+		yloop[selectindex]=yloop[selectindex]+snap;                                          
+      break;
+	 case "Enter": //Most of the functional shopping code goes here.
+
+      break;
+    default:
+      return; // Quit when this doesn't handle the key event.
+  } //end event key handling switch
+  event.preventDefault();// Cancel the default action to avoid it being handled twice
+}, true);	//end of event key handling, not clear what the ", true);" is about	
+
+
+//file save functionality
+(function () {
+var textFile = null,
+  makeTextFile = function (text) {
+    var data = new Blob([text], {type: 'text/plain'});
+    // If we are replacing a previously generated file we need to
+    // manually revoke the object URL to avoid memory leaks.
+    if (textFile !== null) {
+      window.URL.revokeObjectURL(textFile);
+    }
+    textFile = window.URL.createObjectURL(data);
+    return textFile;
+  };
+  var create = document.getElementById('create'),
+    textbox = document.getElementById('textbox');
+  create.addEventListener('click', function () {
+    var link = document.getElementById('downloadlink');
+    link.href = makeTextFile(gcode);
+    link.style.display = 'block';
+  }, false);
+})();
+
+//height = parseInt(document.getElementById('tbheight'));
+
+
+
+
+}//end update function
+
+
+//<input type="number" id="heightinput" name="Height" value="8" onclick="height=parseFloat(document.getElementById('heightinput'));">
+
+    </script>
+	<br>
+<button id="create">Create file</button>
+<a download="printme.gcode" id="downloadlink" style="display: none">Download</a>
+<input type="button" value="Zoom in" onclick="scale=scale+1;" />
+<input type="button" value="Zoom out" onclick="scale=scale-1;" />
+<input type="button" value="Snap size +" onclick="if (snap<1){snap=snap*2;}else{snap=snap+1;}" />
+<input type="button" value="Snap size -" onclick="if (snap<1.01){snap=snap/2;}else{snap=snap-1};" />
+<input type="button" value="Grid size +" onclick="grid=grid+1;" />
+<input type="button" value="Grid size -" onclick="if(grid>1){grid=grid-1;}" />
+<input type="button" value="height +" onclick="zheight=zheight+1;" />
+<input type="button" value="height -" onclick="zheight=zheight-1;" />
+<input type="number" id="heightinput" name="Height" value="8" onclick="height=parseFloat(document.getElementById('heightinput'));">
+
+<br>
+</body>
+</html>
