@@ -4,6 +4,10 @@
 An open source g-code generator for 3d printers that makes parts from a single continuous extrudate.
 
 Current files: 
+
+Most recent project is notaslicer (notaslicer16.html as of writing), a javascript tool for specifying a 3d printing paths with the mouse and keyboard. 
+
+All the older stuff is in python 2.
 Shapes.py, 1stranda009.py, printconfig.py are one package working towards a complex design tool.
 
 bushinga003 standalone bushing program.  Pick an ID, OD, and height, printer settings are hardcoded.
