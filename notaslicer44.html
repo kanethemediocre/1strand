@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<style>
+    {
+        box-sizing: border-box;
+    }
+    /* Set additional styling options for the columns*/
+    .column {
+    float: left;
+    }
+    .row:after {
+    content: "";
+    display: table;
+    clear: both;
+    }
+    </style>
+ </head>
+ <body>
+    <div class="row">
+        <div class="column" style="background-color:#FFFFFF; column-width: 800px;" >
+               <canvas id="gameCanvas" width="800" height="800"></canvas>
+    <script>
+const FPS = 30;
+var canvas, context;
+canvas = document.getElementById("gameCanvas"); //canvas is the draw sauce.
+context = canvas.getContext("2d");
+setInterval(update, 1000 / FPS);// set up interval (game loop)
+function showchart(chartdataxy, xspace, yspace, x,y){ //displays chart with specified cell dimensions and position
+	var i = 0 //assumes each column is same length, otherwise error
+	var j = 0;
+	while (i<chartdataxy.length){
+		var cellposx = x+i*xspace;
+		j = 0;
+		while (j<chartdataxy[0].length){
+			var cellposy = y+j*yspace;
+			context.fillText(chartdataxy[i][j],cellposx,cellposy);
+			j=j+1;
+			}
+		i=i+1;
+		}
+	}
+//var cxytest = [ ["first", "column", "of", "words"], ["2nd", "column", "of", "words"]       ];
+//showchart(cxytest, 64, 16, 300,300);
+function directionof(dx,dy){ //Uses x and y displacement to return an angle
+	var dirof = -1*Math.atan2(dx,dy) - Math.PI/2;//Sort of trial and error for this
+	return dirof;	
+	}
+function addvector(x1,y1,vsize,dir){
+	var x2 = x1 + vsize*Math.cos(dir);
+	var y2 = y1 + vsize*Math.sin(dir);
+	return [x2,y2];
+	}
+function showvector(x1,y1,dir,vcolor){ //A visual indicator of a direction, mostly for testing
+	var vsize = 16;
+	var point = addvector(x1,y1,vsize,dir);
+	context.strokeStyle = vcolor;
+	context.beginPath();
+	context.moveTo(x1,y1);
+	context.lineTo(point[0],point[1]);
+	context.stroke();
+	}
+function draworthopathold(px,py, xlist, ylist, size, color1, color2){
+	var fx = px + xlist[0]*size; 
+	var fy = py + ylist[0]*size;
+	context.strokeStyle = color1;
+	context.beginPath();
+	context.moveTo(fx, fy); 
+	i = xlist.length;
+	while(i>0){
+		i=i-1;
+		var ix = px + xlist[i]*size;
+		var iy = py + ylist[i]*size;
+		context.lineTo(ix, iy);
+		}
+	context.stroke();
+	if (color2 !== 0){
+		context.strokeStyle = color2;
+		context.beginPath()
+		context.moveTo(fx,fy);
+		context.lineTo(xlist[xlist.length-1]*size,ylist[ylist.length-1]*size);
+		context.stroke();
+		}
+	}
+function draworthopath(px,py, xlist, ylist, size, color1, color2){
+	var fx = px + xlist[0]*size; 
+	var fy = py + ylist[0]*size;
+	context.strokeStyle = color1;
+	context.beginPath();
+	context.moveTo(fx, fy); 
+	i = 0;
+	while(i<xlist.length-1){
+		i=i+1;
+		var ix = px + xlist[i]*size;
+		var iy = py + ylist[i]*size;
+		context.lineTo(ix, iy);
+		}
+	context.stroke();
+	if (color2 !== 0){
+		context.strokeStyle = color2;
+		context.beginPath();
+		context.moveTo(fx,fy);
+		context.lineTo(xlist[xlist.length-1]*size,ylist[ylist.length-1]*size);
+		context.stroke();
+		}
+	}
+function pointstoslopeintercept(x1,y1,x2,y2){//returns [m,b]
+	var m = 0;
+	var b = 0;
+	var dx = x2-x1;
+	var dy = y2-y1;
+	if (dx*dx<.000001){//Could trigger unnecessarily for very small lines, but I'm willing to risk it
+		m = "vertical";//for error handling to avoid infinite or very large numbers
+		b = "vertical";
+		}else{
+		m = dy/dx;
+		b = y1-x1*m;
+		}//y1 = x1*m+b, y1-x1*m = b
+	return [m,b];
+	}
+function findintersection(x11,y11,x12,y12,x21,y21,x22,y22){//returns [x,y,bool], where boolean is true if x,y is on the line segments
+	var line1 = pointstoslopeintercept(x11,y11,x12,y12);
+	var line2 = pointstoslopeintercept(x21,y21,x22,y22);
+	var m1 = line1[0];
+	var b1 = line1[1];
+	var m2 = line2[0];
+	var b2 = line2[1];
+	var intersect = 0; //placeholder value
+	var result = 0; //placeholder value
+	if (m1==m2){result = "parallel";}//"parallel" is a form of error handling indicating no intersection exists
+	else if (m1 == "vertical"){
+		var x = x11;//if line1 is vertical, x is constant for line1, and the intersection will have that x value
+		var y = x*m2 + b2;//plug that x value into the line 2 equation.
+		}
+	else if (m2 == "vertical"){
+		var x = x21;//if line2 is vertical, x is constant for line2,
+		var y = x*m1+b1;//plug that x value into the line 1 equation.
+		}
+	else{
+		var m1 = line1[0];
+		var b1 = line1[1];
+		var m2 = line2[0];
+		var b2 = line2[1];
+		var x = (b2-b1)/(m1-m2);//x*m1+b1 = x*m2+b2, x*m1 = x*m2+b2-b1, x*m1-x*m2 = b2-b1, x(m1-m2) =b2-b1, x = (b2-b1)/(m1-m2)
+		var y = m1*x+b1;
+		}
+	if (result==0){
+		if ((x>x11)&&(x>x12)){intersect=false;}//if x is larger than line1 domain
+		else if ((x<x11)&&(x<x12)){intersect=false;}//or smaller than line1 domain
+		else if ((x>x21)&&(x>x22)){intersect=false;}//or larger than line2 domain
+		else if ((x<x21)&&(x<x22)){intersect=false;}//or smaller than line2 domain, then the line segments do not intersect
+		else {intersect=true;}
+		result = [x,y,intersect]; 
+		}
+	return result;
+	}
+function isinsideloop(x,y,axloop,ayloop){
+	var i=0;
+	var intersections = 0;
+	var L=axloop.length;
+	var segmentstatus = findintersection(x,y,x+1000,y,axloop[L-1],ayloop[L-1],axloop[i],ayloop[i]);//checks segment of last point to first point
+	if (segmentstatus[2]==true){intersections=intersections+1;}
+	while (i<axloop.length-1){
+		var segmentstatus = findintersection(x,y,x+1000,y,axloop[i],ayloop[i],axloop[i+1],ayloop[i+1]); //checks segment of point i to point i+1
+		if (segmentstatus[2]==true){intersections=intersections+1;}
+		i=i+1;
+		}
+	if (intersections%2==1){return true;}else{return false;}
+	//return intersections;//odd numbers indicate inside loop
+	}
+function insidecorner(axloop,ayloop,i,noz){//Will not work for first or last point in loop
+	var dx1 = axloop[i]-axloop[i-1];
+	var dy1 = ayloop[i]-ayloop[i-1];
+	var dir1 = directionof(dx1,dy1);
+	var dx2 = axloop[i]-axloop[i+1];
+	var dy2 = ayloop[i]-ayloop[i+1];
+	var dir2 = directionof(dx2,dy2);
+	var dir3 = (dir1 + dir2)/2;
+	var dir4 = dir3+Math.PI;
+	var dir5 = "error"; //Correct direction will overwrite this
+	var point3 = addvector(axloop[i],ayloop[i],1,dir3);
+	var point4  = addvector(axloop[i],ayloop[i],1,dir4);
+	if (isinsideloop(point3[0],point3[1],axloop,ayloop)){dir5=dir3;}else{dir5=dir4;}//dir5 is now correct direction
+	var dir5distance = noz/(Math.sin(Math.absolute(dir1-dir5)));
+	return addvector(axloop[i],ayloop[i],dir5distance,dir5);//returns [x,y] of inside corner point
+	}
+function addwall(axloop,ayloop,noz,inside){//inside +1 for adding inner loop, -1 for adding outer loop, only inner loop is supported right now
+	var xfirstpointloop = [axloop[axloop.length-1],axloop[0],axloop[1]]; //Generates a 3 point loop to handle first point in loop
+	var yfirstpointloop = [ayloop[ayloop.length-1],ayloop[0],ayloop[1]];
+	var xlastpointloop = [axloop[axloop.length-2],axloop[axloop.length-1],axloop[0]];//Generates a 3 point loop to handle last point in loop
+	var ylastpointloop = [ayloop[ayloop.length-2],ayloop[ayloop.length-1],ayloop[0]];
+	var firstpoint = insidecorner(xfirstpointloop,yfirstpointloop,1,noz); //These loops were made with the relevant point in the middle (0,1,2)
+	var lastpoint = insidecorner(xlastpointloop,ylastpointloop,1,noz);
+	var newxloop = [firstpoint[0]];//array containing only the first x value
+	var newyloop = [firstpoint[1]];//first y value.   Last point will be added.... last.
+	var i=0;
+	while (i<axloop-2){//First and last index handled separately
+		i=i+1;
+		var point = insidecorner(axloop,ayloop,i,noz); 
+		newxloop.push(point[0]);
+		newyloop.push(point[1]);
+		}
+	newxloop.push(lastpoint[0]);
+	newyloop.push(lastpoint[1]);
+	return [newxloop,newyloop];
+	}
+function draw3dline(x1,y1,z1,x2,y2,z2,ox,oy,scale,linecolor){//Isometric view, where 1 unit of X, Y, and Z distance are equal on the screen
+	var cos30 = Math.cos(Math.PI/6); //0.866
+	var sin30 = Math.cos(Math.PI/6); //0.5
+	var startx = ox+(x1*cos30-y1*cos30)*scale; //Origin x, to the right for x, left for y
+	var starty = oy-(z1+x1*sin30+y1*sin30)*scale; //Origin y, up for x, up for y
+	var endx = ox+(x2*cos30-y2*cos30)*scale;
+	var endy = oy-(z2+x2*sin30+y2*sin30)*scale;
+	context.strokeStyle = linecolor;
+	context.lineWidth = Math.floor(scale);
+	context.beginPath();
+	context.moveTo(startx,starty);
+	context.lineTo(endx,endy);
+	context.stroke();
+	}
+function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	var i=0;
+	var thered = 255;
+	var theblue = 0;
+	var colorchangerate = 255/(axpath.length);
+	while (i<axpath.length-1){
+		i=i+1;
+		var thecolor = "rgb(" + thered + ",0," + theblue + ")";
+		draw3dline(axpath[i-1],aypath[i-1],azpath[i-1],axpath[i],aypath[i],azpath[i],originx,originy,ascale,thecolor);
+		thered = Math.floor(255 - i*colorchangerate);
+		theblue = Math.floor(i*colorchangerate);
+		}
+	}
+function contextinstructions(tool){
+	if (tool == 0){
+		context.fillText("Add point tool",8,240);
+		context.fillText("Add points to end of loop with spacebar",8,256);
+		}
+	if (tool == 1){
+		context.fillText("Insert point tool",8,240);
+		context.fillText("Insert a point before the selected point with spacebar",8,256);
+		}
+	}
+function addgrid(snap,scale,grid){ //Displays grid lines, with spacing snap*grid in real space, snap*grid*scale in pixels
+	if (grid > 0){
+		var gspace = snap*scale*grid; //Grid size of 1 indicates a intersection at every snap
+		var gx = 0; //grid coords in pixels
+		var gy = 0;
+		context.beginPath()
+		while (gx<canvas.width){
+			gx = gx+gspace;
+			context.moveTo(gx,0);
+			context.lineTo(gx,canvas.height);
+			}
+		context.stroke();
+		context.beginPath()
+		while (gy<canvas.height){
+			gy = gy+gspace;
+			context.moveTo(0,gy);
+			context.lineTo(canvas.width,gy);
+			}
+		context.stroke();
+		}
+	}
+var mousex = 0;
+var mousey = 0;
+var lastpointx = 0;
+var lastpointy = 0;
+var selectindex = 0;
+var scale = 8; //number of pixels per millimeter
+var snap = 2; //snap size in mm
+var grid = 1; //Grid state, 0 = off, 1 = on, 2 = one grid every 2 snaps
+var xloop = []; //X and Y points for active loop 
+var yloop = []; //A loop represents 1 layer.
+var xpreloop = []; //X and Y preloop are for displaying unconfirmed loop components
+var ypreloop = [];
+var gcode = "";
+var layerheight = 0.5;
+var z = 0; //First layer is 1 layer in Z
+var baseheight = 0;
+var zheight = 16;
+var nozzle = 1;
+var qqq = 10; //qqq is the new height
+var filament = 1.75;
+var filamentarea = filament * filament * 3.14159 / 4.0;
+var GooCoefficient = layerheight * nozzle / filamentarea;
+var tool = 0; //0 is add point, 1 is add fill, 2 is insert point
+var fillstartx = 0; //These are for the rectangle fill
+var fillstarty = 0;
+var fillsizex = 0;
+var fillsizey = 0;
+var xpath = [];
+var ypath = [];
+var zpath = [];
+var epath = [];
+
+function update() {
+	context.fillStyle = "black";//Background is black
+	context.fillRect(0, 0, canvas.width, canvas.height); //rectangle the size of the canvas.
+	context.strokeStyle = "darkviolet";//grid color
+	context.lineWidth = 1;
+	addgrid(snap,scale,grid);
+	context.fillStyle = "white";
+	context.fillText("Spacebar for new point at mouse cursor, arrow keys adjust selected point position, [ and ] change point selection, G toggles grid, s key saves text to Gcode variable and displays line 1, use button to download",100,8);
+	var chart1 = [	["Mouse X", "Mouse Y", "Grid size", "Snap size", "Scale", "Height"], [mousex/scale, mousey/scale, grid,snap,scale,zheight] 	];
+	showchart(chart1, 64, 16, 8,8);
+	if (xloop.length<1){
+		context.fillText("No points entered",8,104);
+	}else{
+		var chart2 = [ ["Last X", "Last Y", "Selected X", "Selected Y", "Point index", "Sides","Tool"], [xloop[xloop.length-1], yloop[yloop.length-1], xloop[selectindex],yloop[selectindex], selectindex,xloop.length, tool]       ];
+		showchart(chart2, 64, 16, 8,104);
+		context.beginPath(); //Indicates location of selected point
+		context.strokeStyle = "orange"; 
+		context.arc(xloop[selectindex]*scale,yloop[selectindex]*scale, 8, 0, 2 * Math.PI, false); //draws the circle
+		context.lineWidth = 2; //circle is 2x thicc
+		context.stroke();	//ok now actually draw it.
+		}
+	//////Context instructions/////////////////////////
+	contextinstructions(tool);
+		
+	context.fillText("Spacebar for new point at mouse cursor, arrow keys adjust selected point position, [ and ] change point selection, G toggles grid, s key saves text to Gcode variable and displays line 1, use button to download",100,8);
+	var clickx = mousex/scale;
+	var snappedx = snap*Math.floor(clickx/snap);
+	var clicky = mousey/scale;
+	var snappedy = snap*Math.floor(clicky/snap);
+	context.fillText(isinsideloop(clickx,clicky,xloop,yloop),500,700);//proving my functions don't work.
+	var last = xloop.length-1;
+	var test123 = findintersection(xloop[0],yloop[0],xloop[1],yloop[1],xloop[last-1],yloop[last-1],xloop[last],yloop[last]);
+	context.fillText(isinsideloop(clickx,clicky,xloop,yloop),500,700);//proving my functions don't work.
+	context.fillText(test123,700,725);//proving my functions don't work.
+	context.fillText(pointstoslopeintercept(xloop[0],yloop[0],xloop[1],yloop[1]),500,750);//at least that one works
+	if (xloop.length>0){
+		xpreloop = [xloop[xloop.length-1], snappedx];
+		ypreloop = [yloop[yloop.length-1], snappedy];
+	}else{
+		xpreloop = [snappedx]; 
+		ypreloop = [snappedy]; 
+		}
+	if (tool == 1){
+		xpreloop = [xloop[selectindex-1], snappedx, xloop[selectindex]]; 
+		ypreloop = [yloop[selectindex-1], snappedy, yloop[selectindex]]; 
+		//Insert a sensible preview for inserting point before
+	}
+	if (tool == 2){
+		
+	}
+		
+	draworthopath(0,0,xloop,yloop,scale,"red","yellow"); //This is the actual path rendering
+	draworthopath(0,0,xpreloop,ypreloop,scale,"blue",0); //This is the preview path rendering
+	draw3dpath(xpath,ypath,zpath,600,600,2,"green");
+	if (xloop.length>selectindex){
+		var i = selectindex;
+		var dx1 = xloop[i]-xloop[i-1];
+		var dy1 = yloop[i]-yloop[i-1];
+		var dir1 = directionof(dx1,dy1);
+		var dx2 = xloop[i]-xloop[i+1];
+		var dy2 = yloop[i]-yloop[i+1];
+		var dir2 = directionof(dx2,dy2);
+		var dir3 = (dir1 + dir2)/2;
+		var dir4 = dir3+Math.PI;
+		showvector(xloop[i]*scale,yloop[i]*scale,dir1,"orange");
+		showvector(xloop[i]*scale,yloop[i]*scale,dir2,"purple");
+		showvector(xloop[i]*scale,yloop[i]*scale,dir3,"grey");
+		showvector(xloop[i]*scale,yloop[i]*scale,dir4,"white");
+		showvector(xloop[i]*scale,yloop[i]*scale,0,"blue");
+		var testchart = [ ["dir1", "dir2", "dir3", "dir4"], [dir1, dir2, dir3,dir4]       ];
+		showchart(testchart, 64, 16, 8,700);
+		}
+	//showvector(200,300,1,"teal"); //works as expected
+//////////////////////Mouse input handling//////////////////////////////////////////
+document.addEventListener("mousemove", mouseMoveHandler, false);
+function mouseMoveHandler(e) {
+	mousex = e.clientX;
+	mousey =  e.clientY;
+}
+//document.addEventListener('click',(event) => {
+//    console.log('clicked');
+//});
+////////////////////////////////////////////////////////Keyboard input/////////////////////////////////////
+window.addEventListener("keydown", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  switch (event.key) { 
+    case " ":
+	var clickx = mousex/scale;
+	var snappedx = snap*Math.floor(clickx/snap);
+	var clicky = mousey/scale;
+	var snappedy = snap*Math.floor(clicky/snap);
+	if (tool == 0){
+		xloop.push(snappedx);
+		yloop.push(snappedy);
+	}else if (tool == 1){
+		xloop.splice(selectindex, 0, snappedx);
+		yloop.splice(selectindex, 0, snappedy);
+		}
+      break;   
+	case "]": 
+		if (selectindex < xloop.length-1){ selectindex = selectindex+1; }
+		else { selectindex = 0; }
+      break;
+	case "[": 
+		if (selectindex > 0 ){ selectindex = selectindex-1; }
+		else { selectindex = xloop.length-1; }
+      break;	  
+	case "Control":
+		
+		break;
+	case "g":    //grid toggle
+		if (grid==0){grid=1;}else{grid=0;}
+	  break;
+	case "s": //save gcode
+xpath = [];
+ypath = [];
+zpath = [];
+epath = [];
+var z=0;
+while (z<zheight){//For all layers (z coords)
+	z=z+layerheight;
+	xpath.push(xloop[0]);//adds first point
+	ypath.push(yloop[0]);
+	zpath.push(z);
+	var i=0
+	while (i<xloop.length-1){ //For all points in loop
+		i=i+1;
+		xpath.push(xloop[i]); //add point from xloop to xpath
+		ypath.push(yloop[i]);
+		zpath.push(z); //add z coordinate to zpath
+		}
+	}
+var i=1;
+epath.push(0);//Origin has 0 extruder position
+epath.push(0); //First point in polygon has 0 extruder position
+while (i<xpath.length-1){	
+	i=i+1;
+	var dx = xpath[i]-xpath[i-1];
+	var dy = ypath[i]-ypath[i-1];
+	var distance = Math.sqrt(dx*dx+dy*dy);
+	var estep = distance*GooCoefficient;
+	epath.push(epath[i-1]+estep);
+}
+gcode = "G28 \nG21 \nG90 \nG92 E0 \nM82";
+var i=0
+gcode = gcode + "G1 X"+xpath[0];
+gcode = gcode + " Y" + ypath[0];
+gcode = gcode + " Z" + zpath[0];
+gcode = gcode + " E" + epath[0];
+gcode = gcode + " F1200 \n"; //fixed feedrate 1200mm/min, 20mm/s
+
+while (i<xpath.length-1){
+	i=i+1;
+	gcode = gcode + "G1 X"+xpath[i];
+	gcode = gcode + " Y" + ypath[i];
+	gcode = gcode + " Z" + zpath[i];
+	gcode = gcode + " E" + epath[i];
+	gcode = gcode + " F1200 \n"; //fixed feedrate 1200mm/min, 20mm/s
+	}
+
+     	break;
+	case "+": 
+		scale = scale + 1;
+    	  break;		  
+	case "-": 
+		if (scale>1){scale=scale-1;}
+		break;	  
+	case "ArrowRight": 
+		xloop[selectindex]=xloop[selectindex]+snap;
+    	  break;
+	case "ArrowLeft": 
+		xloop[selectindex]=xloop[selectindex]-snap;
+    	  break;		  
+	case "ArrowUp": 
+		yloop[selectindex]=yloop[selectindex]-snap;
+     	 break;
+	case "ArrowDown": 
+		yloop[selectindex]=yloop[selectindex]+snap;                                          
+      break;
+	 case "Enter": 
+		addfilltrapv(xloop,yloop,startx,starty,sizex,sizey,m1,b1,m2,b2,nozzle);	
+      break;
+	case "Delete": 
+		xloop.splice(selectindex, 1);
+		yloop.splice(selectindex, 1);
+      break;
+    default:
+      return; // Quit when this doesn't handle the key event.
+  } //end event key handling switch
+  event.preventDefault();// Cancel the default action to avoid it being handled twice
+}, true);	//end of event key handling, not clear what the ", true);" is about	
+
+
+//file save functionality
+(function () {
+var textFile = null,
+  makeTextFile = function (text) {
+    var data = new Blob([text], {type: 'text/plain'});
+    // If we are replacing a previously generated file we need to
+    // manually revoke the object URL to avoid memory leaks.
+    if (textFile !== null) {
+      window.URL.revokeObjectURL(textFile);
+    }
+    textFile = window.URL.createObjectURL(data);
+    return textFile;
+  };
+  var create = document.getElementById('create'),
+    textbox = document.getElementById('textbox');
+  create.addEventListener('click', function () {
+    var link = document.getElementById('downloadlink');
+    link.href = makeTextFile(gcode);
+    link.style.display = 'block';
+  }, false);
+})();
+}//end update function
+    </script>
+            <p>Data..</p>
+        </div>
+        <div class="column" style="background-color:000000; column-width:200px">
+<br>
+<br>
+<input type="button" value="Zoom in" onclick="scale=scale+1;" />
+<input type="button" value="Zoom out" onclick="scale=scale-1;" />
+<br>
+<br>
+<input type="button" value="Snap size +" onclick="if (snap<1){snap=snap*2;}else{snap=snap+1;}" />
+<input type="button" value="Snap size -" onclick="if (snap<1.01){snap=snap/2;}else{snap=snap-1};" />
+<br>
+<br>
+<input type="button" value="Grid size +" onclick="grid=grid+1;" />
+<input type="button" value="Grid size -" onclick="if(grid>1){grid=grid-1;}" />
+<br>
+<br>
+<input type="button" value="height +" onclick="zheight=zheight+layerheight;" />
+<input type="button" value="height -" onclick="zheight=zheight-layerheight;" />
+<br>
+<br>
+<input type="button" value="Tool +" onclick="if (tool<2){tool=Math.floor(tool+1);}" />
+<input type="button" value="Tool -" onclick="if (tool>0){tool=Math.floor(tool-1);}" />
+<br>
+<br>
+<button id="create">Create a gcode file</button>
+<a download="printme.gcode" id="downloadlink" style="display: none">Download</a>
+
+        </div>
+    </div>
+    <meta charset="UTF-8"> 
+    <title>Not a slicer v44 by KaneTheMediocre</title>
+    <style></style>
+</head>
+
+</html>
