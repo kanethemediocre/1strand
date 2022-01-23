@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<style>
+
+    /* Set additional styling options for the columns*/
+    .column {
+    float: left;
+    }
+    .row:after {
+    content: "";
+    display: table;
+    clear: both;
+    }
+    </style>
+ </head>
+ <body>
+    <div class="row">
+        <div class="column" style="background-color:#FFFFFF; column-width: 800px;" >
+               <canvas id="gameCanvas" width="800" height="800"></canvas>
+    <script>
+const FPS = 10;
+var canvas, context;
+canvas = document.getElementById("gameCanvas"); //canvas is the draw sauce.
+context = canvas.getContext("2d");
+setInterval(update, 1000 / FPS);// set up interval (game loop)
+function showchart(chartdataxy, xspace, yspace, x,y){ //displays chart with specified cell dimensions and position
+	var i = 0 //assumes each column is same length, otherwise error
+	var j = 0;
+	while (i<chartdataxy.length){
+		var cellposx = x+i*xspace;
+		j = 0;
+		while (j<chartdataxy[0].length){
+			var cellposy = y+j*yspace;
+			context.fillText(chartdataxy[i][j],cellposx,cellposy);
+			j=j+1;
+			}
+		i=i+1;
+		}
+	}
+//var cxytest = [ ["first", "column", "of", "words"], ["2nd", "column", "of", "words"]       ];
+//showchart(cxytest, 64, 16, 300,300);
+function directionof(dx,dy){ //Uses x and y displacement to return an angle
+	var dirof = -1*Math.atan2(dx,dy) - Math.PI/2;//Sort of trial and error for this
+	return dirof;	
+	}
+function addvector(x1,y1,vsize,dir){
+	var x2 = x1 + vsize*Math.cos(dir);
+	var y2 = y1 + vsize*Math.sin(dir);
+	return [x2,y2];
+	}
+function showvector(x1,y1,dir,vcolor){ //A visual indicator of a direction, mostly for testing
+	var vsize = 16;
+	var point = addvector(x1,y1,vsize,dir);
+	context.strokeStyle = vcolor;
+	context.beginPath();
+	context.moveTo(x1,y1);
+	context.lineTo(point[0],point[1]);
+	context.stroke();
+	}
+function draworthopathold(px,py, xlist, ylist, size, color1, color2){
+	var fx = px + xlist[0]*size; 
+	var fy = py + ylist[0]*size;
+	context.strokeStyle = color1;
+	context.beginPath();
+	context.moveTo(fx, fy); 
+	i = xlist.length;
+	while(i>0){
+		i=i-1;
+		var ix = px + xlist[i]*size;
+		var iy = py + ylist[i]*size;
+		context.lineTo(ix, iy);
+		}
+	context.stroke();
+	if (color2 !== 0){
+		context.strokeStyle = color2;
+		context.beginPath()
+		context.moveTo(fx,fy);
+		context.lineTo(xlist[xlist.length-1]*size,ylist[ylist.length-1]*size);
+		context.stroke();
+		}
+	}
+function draworthopath(px,py, xlist, ylist, size, color1, color2){
+	var fx = px + xlist[0]*size; 
+	var fy = py + ylist[0]*size;
+	context.strokeStyle = color1;
+	context.beginPath();
+	context.moveTo(fx, fy); 
+	i = 0;
+	while(i<xlist.length-1){
+		i=i+1;
+		var ix = px + xlist[i]*size;
+		var iy = py + ylist[i]*size;
+		context.lineTo(ix, iy);
+		}
+	context.stroke();
+	if (color2 !== 0){
+		context.strokeStyle = color2;
+		context.beginPath();
+		context.moveTo(fx,fy);
+		context.lineTo(xlist[xlist.length-1]*size,ylist[ylist.length-1]*size);
+		context.stroke();
+		}
+	}
+function pointstoslopeintercept(x1,y1,x2,y2){//returns [m,b]
+	var m = 0;
+	var b = 0;
+	var dx = x2-x1;
+	var dy = y2-y1;
+	if (dx*dx<.000001){//Could trigger unnecessarily for very small lines, but I'm willing to risk it
+		m = "vertical";//for error handling to avoid infinite or very large numbers
+		b = "vertical";
+		}else{
+		m = dy/dx;
+		b = y1-x1*m;
+		}//y1 = x1*m+b, y1-x1*m = b
+	return [m,b];
+	}
+function findintersection(x11,y11,x12,y12,x21,y21,x22,y22){//returns [x,y,bool], where boolean is true if x,y is on the line segments
+	var line1 = pointstoslopeintercept(x11,y11,x12,y12);
+	var line2 = pointstoslopeintercept(x21,y21,x22,y22);
+	var m1 = line1[0];
+	var b1 = line1[1];
+	var m2 = line2[0];
+	var b2 = line2[1];
+	var intersect = 0; //placeholder value
+	var result = 0; //placeholder value
+	if (m1==m2){result = "parallel";}//"parallel" is a form of error handling indicating no intersection exists
+	else if (m1 == "vertical"){
+		var x = x11;//if line1 is vertical, x is constant for line1, and the intersection will have that x value
+		var y = x*m2 + b2;//plug that x value into the line 2 equation.
+		}
+	else if (m2 == "vertical"){
+		var x = x21;//if line2 is vertical, x is constant for line2,
+		var y = x*m1+b1;//plug that x value into the line 1 equation.
+		}
+	else{
+		var m1 = line1[0];
+		var b1 = line1[1];
+		var m2 = line2[0];
+		var b2 = line2[1];
+		var x = (b2-b1)/(m1-m2);//x*m1+b1 = x*m2+b2, x*m1 = x*m2+b2-b1, x*m1-x*m2 = b2-b1, x(m1-m2) =b2-b1, x = (b2-b1)/(m1-m2)
+		var y = m1*x+b1;
+		}
+	if (result==0){
+		if ((x>x11)&&(x>x12)){intersect=false;}//if x is larger than line1 domain
+		else if ((x<x11)&&(x<x12)){intersect=false;}//or smaller than line1 domain
+		else if ((x>x21)&&(x>x22)){intersect=false;}//or larger than line2 domain
+		else if ((x<x21)&&(x<x22)){intersect=false;}//or smaller than line2 domain, then the line segments do not intersect
+		else {intersect=true;}
+		result = [x,y,intersect]; 
+		}
+	return result;
+	}
+function isinsideloop(x,y,axloop,ayloop){
+	var i=0;
+	var intersections = 0;
+	var L=axloop.length;
+	var segmentstatus = findintersection(x,y,x+1000,y,axloop[L-1],ayloop[L-1],axloop[i],ayloop[i]);//checks segment of last point to first point
+	if (segmentstatus[2]==true){intersections=intersections+1;}
+	while (i<axloop.length-1){
+		var segmentstatus = findintersection(x,y,x+1000,y,axloop[i],ayloop[i],axloop[i+1],ayloop[i+1]); //checks segment of point i to point i+1
+		if (segmentstatus[2]==true){intersections=intersections+1;}
+		i=i+1;
+		}
+	if (intersections%2==1){return true;}else{return false;}
+	//return intersections;//odd numbers indicate inside loop
+	}
+function insidecorner(axloop,ayloop,i,noz){//Will not work for first or last point in loop
+	var dx1 = axloop[i]-axloop[i-1];
+	var dy1 = ayloop[i]-ayloop[i-1];
+	var dir1 = directionof(dx1,dy1);
+	var dx2 = axloop[i]-axloop[i+1];
+	var dy2 = ayloop[i]-ayloop[i+1];
+	var dir2 = directionof(dx2,dy2);
+	var dir3 = (dir1 + dir2)/2;
+	var dir4 = dir3+Math.PI;
+	var dir5 = "error"; //Correct direction will overwrite this
+	var point3 = addvector(axloop[i],ayloop[i],1,dir3);
+	var point4  = addvector(axloop[i],ayloop[i],1,dir4);
+	if (isinsideloop(point3[0],point3[1],axloop,ayloop)){dir5=dir3;}else{dir5=dir4;}//dir5 is now correct direction
+	var dir5distance = noz/(Math.sin(Math.absolute(dir1-dir5)));
+	return addvector(axloop[i],ayloop[i],dir5distance,dir5);//returns [x,y] of inside corner point
+	}
+function addwall(axloop,ayloop,noz,inside){//inside +1 for adding inner loop, -1 for adding outer loop, only inner loop is supported right now
+	var xfirstpointloop = [axloop[axloop.length-1],axloop[0],axloop[1]]; //Generates a 3 point loop to handle first point in loop
+	var yfirstpointloop = [ayloop[ayloop.length-1],ayloop[0],ayloop[1]];
+	var xlastpointloop = [axloop[axloop.length-2],axloop[axloop.length-1],axloop[0]];//Generates a 3 point loop to handle last point in loop
+	var ylastpointloop = [ayloop[ayloop.length-2],ayloop[ayloop.length-1],ayloop[0]];
+	var firstpoint = insidecorner(xfirstpointloop,yfirstpointloop,1,noz); //These loops were made with the relevant point in the middle (0,1,2)
+	var lastpoint = insidecorner(xlastpointloop,ylastpointloop,1,noz);
+	var newxloop = [firstpoint[0]];//array containing only the first x value
+	var newyloop = [firstpoint[1]];//first y value.   Last point will be added.... last.
+	var i=0;
+	while (i<axloop-2){//First and last index handled separately
+		i=i+1;
+		var point = insidecorner(axloop,ayloop,i,noz); 
+		newxloop.push(point[0]);
+		newyloop.push(point[1]);
+		}
+	newxloop.push(lastpoint[0]);
+	newyloop.push(lastpoint[1]);
+	return [newxloop,newyloop];
+	}
+function draw3dline(x1,y1,z1,x2,y2,z2,ox,oy,scale,linecolor){//Isometric view, where 1 unit of X, Y, and Z distance are equal on the screen
+	var cos30 = Math.cos(Math.PI/6); //0.866
+	var sin30 = Math.cos(Math.PI/6); //0.5
+	var startx = ox+(x1*cos30-y1*cos30)*scale; //Origin x, to the right for x, left for y
+	var starty = oy-(z1+x1*sin30+y1*sin30)*scale; //Origin y, up for x, up for y
+	var endx = ox+(x2*cos30-y2*cos30)*scale;
+	var endy = oy-(z2+x2*sin30+y2*sin30)*scale;
+	context.strokeStyle = linecolor;
+	context.lineWidth = Math.floor(scale);
+	context.beginPath();
+	context.moveTo(startx,starty);
+	context.lineTo(endx,endy);
+	context.stroke();
+	}
+function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	var i=0;
+	var thered = 255;
+	var theblue = 0;
+	var colorchangerate = 255/(axpath.length);
+	while (i<axpath.length-1){
+		i=i+1;
+		var thecolor = "rgb(" + thered + ",0," + theblue + ")";
+		draw3dline(axpath[i-1],aypath[i-1],azpath[i-1],axpath[i],aypath[i],azpath[i],originx,originy,ascale,thecolor);
+		thered = Math.floor(255 - i*colorchangerate);
+		theblue = Math.floor(i*colorchangerate);
+		}
+	}
+class Cake{
+	constructor(x,y,ids,ods,hs,dr,dz,n,g,f,dir,estart,ht,vt){//ids, ods, and hs are arrays of id, od, and height.
+		this.x=x;
+		this.y=y;
+		this.ids=ids;
+		this.ods=ods;
+		this.hs=hs;
+		this.dr=dr;
+		this.dz=dz;
+		this.n=n;
+		this.g=g;
+		this.f=f;
+		this.dir=dir;
+		this.estart=estart;
+		this.ht=ht;
+		this.vt=vt;
+		this.xpath = [];
+		this.ypath = [];
+		this.zpath = [];
+		this.epath = [];
+		this.fpath = [];
+		var firstbushing = new Bushing(this.x,this.y,this.ids[0],this.ods[0],this.hs[0],this.hs[1],this.dr,this.dz,this.n,this.g,this.f,this.dir,this.estart,this.ht,this.vt);
+		this.xpath = this.xpath.concat(firstbushing.xpath);
+		this.ypath = this.ypath.concat(firstbushing.ypath);
+		this.zpath = this.zpath.concat(firstbushing.zpath);
+		this.epath = this.epath.concat(firstbushing.epath);
+		this.fpath = this.xpath.concat(firstbushing.fpath);
+		var i=1;
+		while(i<ids.length){
+			var thedir = 1;
+			var avgrad = (this.ids[i]+this.ods[i]);
+			if (avgrad<this.xpath[this.xpath.length-1]-this.x){thedir = -1;}
+			var nextbushing = new Bushing(this.x,this.y,this.ids[i],this.ods[i],this.hs[i],this.hs[i+1],this.dr,this.dz,this.n,this.g,this.f,thedir,this.estart,this.ht,this.vt);
+			this.xpath = this.xpath.concat(nextbushing.xpath);
+			this.ypath = this.ypath.concat(nextbushing.ypath);
+			this.zpath = this.zpath.concat(nextbushing.zpath);
+			this.epath = this.epath.concat(nextbushing.epath);
+			this.fpath = this.xpath.concat(nextbushing.fpath);
+			i++;
+			}
+		}
+	exportasarray(){
+		return [this.xpath,this.ypath,this.zpath,this.epath,this.fpath];
+		}
+	}
+class Bushing{
+	constructor(x,y,r1,r2,h1,h2,dr,dz,n,g,f,dir,estart,ht,vt){
+		this.x=x;
+		this.y=y;
+		this.r1=r1;
+		this.r2=r2;
+		this.h1=h1;
+		this.h2=h2;
+		this.dr=dr;
+		this.dz=dz;
+		this.n=n;
+		this.g=g;
+		this.f=f;
+		this.dir = dir; 
+		this.xpath = [];
+		this.ypath = [];
+		this.zpath = [];
+		this.epath = [];
+		this.fpath = [];
+		var thedir = dir;
+		var h = this.h1;
+		console.log("first e"+estart);
+		while(h<this.h2){
+			if (this.epath.length>0){var es = this.epath[this.epath.length-1];}
+			else{var es = estart;}
+			var newdisc = new Disc(this.x,this.y,this.r1,this.r2,h,this.dr,this.dz,this.n,this.g,this.f,dir,es,ht,vt);
+			this.xpath = this.xpath.concat(newdisc.xpath);
+			this.ypath = this.ypath.concat(newdisc.ypath);
+			this.zpath = this.zpath.concat(newdisc.zpath);
+			this.epath = this.epath.concat(newdisc.epath);
+			this.fpath = this.xpath.concat(newdisc.fpath);
+			h=h+dz;
+			if (h<this.h2){//Alternates dir between 1 and -1, so that discs alternate from inside out to outside in, improving continuity
+				var newdisc = new Disc(this.x,this.y,this.r1,this.r2,h,this.dr,this.dz,this.n,this.g,this.f,dir*-1,es,ht,vt);
+				this.xpath = this.xpath.concat(newdisc.xpath);
+				this.ypath = this.ypath.concat(newdisc.ypath);
+				this.zpath = this.zpath.concat(newdisc.zpath);
+				this.epath = this.epath.concat(newdisc.epath);
+				this.fpath = this.xpath.concat(newdisc.fpath);
+				h=h+dz;
+			}
+		}
+	}
+	exportasarray(){
+		return [this.xpath,this.ypath,this.zpath,this.epath,this.fpath];
+	}
+}
+class Disc{
+	constructor(x,y,r1,r2,h,dr,dz,n,g,f,dir,estart,ht,vt){//n is segments per "circle", g is extruder distance per travel, f is feedrate
+		this.x=x;
+		this.y=y;
+		var realr1 = -999
+		var realr2 = -999
+		if (r1<r2){ //Corrects R1 to always be the small radius.
+			realr1=r1;
+			realr2=r2;
+		}else{
+			realr1=r2;
+			realr2=r1;
+		}
+		this.r1=realr1;
+		this.r2=realr2;
+		this.h=h;
+		this.dr=dr;
+		this.dz=dz;
+		this.n=n;
+		this.g=g;
+		this.f=f;
+		this.ht=ht;
+		this.vt=vt;
+		this.xpath = [];
+		this.ypath = [];
+		this.zpath = [];
+		this.epath = [];
+		this.fpath = [];
+		this.dir = dir; 
+		var r= this.r1; //inside out if dir==1
+		if (this.dir<0){r=this.r2;} //outside in if dir==-1.
+		var endr = this.r2;//end at outside if dir==1
+		if (this.dir<0){endr=this.r1;}//end at inside if dir==-1
+		while(dir*r<dir*(endr-dir*this.dr/2)){//Loop runs while r<endr if dir==1, runs while r>endr if dir==-1
+			var nextr = r+dir*this.dr;
+			var thisvt = 0;
+			var thisht = ht; //Execute horizontal transition but not vertical
+			if (dir*nextr>dir*(endr-dir*this.dr/2)){//If this is the last perimeter on the disc
+				thisvt = vt;
+				thisht = 0; //Execute vertical transition but not horizontal
+				}
+			if (this.epath.length>0){var es = this.epath[this.epath.length-1];}
+			else{var es = estart;}
+			var newperimeter = new Discperimeter(this.x,this.y,r,this.h,this.dr,this.dz,this.n,this.g,this.f,dir,es,thisht,thisvt);
+			this.xpath = this.xpath.concat(newperimeter.xpath);
+			this.ypath = this.ypath.concat(newperimeter.ypath);
+			this.zpath = this.zpath.concat(newperimeter.zpath);
+			this.epath = this.epath.concat(newperimeter.epath);
+			this.fpath = this.xpath.concat(newperimeter.fpath);
+			r=r+dir*this.dr;
+			}
+		}
+	}
+class Discperimeter{
+	constructor(x,y,r,h,dr,dz,n,g,f,dir,estart,ht,vt){//n is segments per "circle", g is extruder distance per travel, f is feedrate
+		this.r=r;
+		this.h=h;
+		this.dr=dr;
+		this.dz=dz;
+		this.n=n;
+		this.ht=ht;
+		this.vt=vt;
+		this.x=x;
+		this.y=y;
+		this.xpath = [];
+		this.ypath = [];
+		this.zpath = [];
+		this.epath = [];
+		this.fpath = [];
+		var i=0;
+		while(i<this.n){
+			this.xpath.push(this.x+(this.r+dir*dr/2)*Math.cos(i*2*Math.PI/n));
+			this.ypath.push(this.y+(this.r+dir*dr/2)*Math.sin(i*2*Math.PI/n));
+			this.zpath.push(this.h);
+			if (this.epath.length>0){var lastepath = this.epath[this.epath.length-1];}
+			else {lastepath = estart;}
+			var segdistance = (this.r+dir*dr/2)*2*Math.PI/n;
+			this.epath.push(lastepath+segdistance*g);
+			this.fpath.push(f);
+			if (i>(this.n-this.ht)){//Assumes somethingpath.length == i
+				var ddr = this.dr/this.ht;//r difference per point
+				var unnameable=i-(this.n-this.ht)
+				this.xpath[i]=(this.x+(this.r+dir*dr/2+ddr*unnameable*dir)*Math.cos(i*2*Math.PI/n));
+				this.ypath[i]=(this.y+(this.r+dir*dr/2+ddr*unnameable*dir)*Math.sin(i*2*Math.PI/n));	
+				console.log(this.r+dir*dr/2+ddr*unnameable*dir+" "+this.ht);
+				}
+			if (i>(this.n-this.vt)){
+				var ddz = this.dz/this.vt;//z difference per point
+				var unnameable=i-(this.n-this.vt)
+				this.zpath[i]=this.zpath[i]+ddz*unnameable;	
+				}
+			i++;
+			}	
+		}
+	}
+function pathtogcode(paths){
+	var xpath = paths[0];
+	var ypath = paths[1];
+	var zpath = paths[2];
+	var epath = paths[3];
+	var fpath = paths[4];
+	var gcode = "G28 \nG21 \nG90 \nG92 E0 \nM82";
+	var i=0
+	gcode = gcode + "G1 X"+xpath[0];
+	gcode = gcode + " Y" + ypath[0];
+	gcode = gcode + " Z" + zpath[0];
+	gcode = gcode + " E" + epath[0];
+	gcode = gcode + " F"+fpath[0]+" \n"; //fixed feedrate 1200mm/min, 20mm/s
+
+	while (i<xpath.length-1){
+		i=i+1;
+		gcode = gcode + "G1 X"+xpath[i];
+		gcode = gcode + " Y" + ypath[i];
+		gcode = gcode + " Z" + zpath[i];
+		gcode = gcode + " E" + epath[i];
+		gcode = gcode + " F"+fpath[i]+" \n"; //fixed feedrate 1200mm/min, 20mm/s
+		}
+	return gcode;
+}
+var mousex = 0;
+var mousey = 0;
+var centerx = 100;
+var centery = 100;
+var scale = 8; //number of pixels per millimeter
+var xloop = []; //X and Y points for active loop 
+var yloop = []; //A loop represents 1 layer.
+var gcode = "";
+var layerheight = 0.5;
+var z = 0; //First layer is 1 layer in Z
+var rad1= 12;
+var rad2 = 32;
+var baseheight = 0;
+var zheight = 16;
+var nozzle = 1;
+var filament = 1.75;
+var filamentarea = filament * filament * 3.14159 / 4.0;
+var GooCoefficient = layerheight * nozzle / filamentarea;
+var feedrate = 1200;
+var tool = 0; //0 is add point, 1 is add fill, 2 is insert point
+var fillstartx = 0; //These are for the rectangle fill
+var fillstarty = 0;
+var fillsizex = 0;
+var fillsizey = 0;
+var xpath = [];
+var ypath = [];
+var zpath = [];
+var epath = [];
+var numsides = 32;
+var htrans = 1;
+var vtrans = 4;
+var livepreview  = false;
+var thebushing = new Bushing(centerx,centery,rad1,rad2,baseheight,zheight,nozzle,layerheight,numsides,GooCoefficient,feedrate,1,0,htrans,vtrans);
+var thepaths = thebushing.exportasarray();
+var thegcode = pathtogcode(thepaths);
+var cakeids = [14,14,16];
+var cakeods = [64,48,32];
+var cakehs = [0,0.5,24,48];
+var cakelevel = 0;0
+var firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,1,0,htrans,vtrans);
+function update() {
+	console.log(centerx);
+	//height = document.getElementById('heightnum');
+	context.fillStyle = "black";//Background is black
+	context.fillRect(0, 0, canvas.width, canvas.height); //rectangle the size of the canvas.
+	thecakepath = firstcake.exportasarray();
+	draw3dpath(thecakepath[0],thecakepath[1],thecakepath[2],400,900,2,"green");
+	context.fillStyle = "white";
+	context.font = "14px Ariel";
+	context.fillText("Stage",10,32);		
+	context.fillText("ID ",60,32);
+	context.fillText("OD ",110,32);
+	context.fillText("Height ",160,32);
+	var i=0;
+	while(i<cakeids.length){
+		context.fillText(i,10,60+i*20);
+		context.fillText(cakeids[i],60,60+i*20);
+		context.fillText(cakeods[i],110,60+i*20);
+		context.fillText(cakehs[i+1],160,60+i*20);//cakehs[0] is the base height, normally 0 ish.
+		i++;
+	}
+	context.strokeStyle = "yellow";
+    context.beginPath()
+    context.rect(4,48+cakelevel*20,320,16);
+    context.stroke();
+
+		(function () {//This all seems like it should be outside the loop, but it only works if inside.
+var textFile = null,
+  makeTextFile = function (text) {
+    var data = new Blob([text], {type: 'text/plain'});
+    // If we are replacing a previously generated file we need to
+    // manually revoke the object URL to avoid memory leaks.
+    if (textFile !== null) {
+      window.URL.revokeObjectURL(textFile);
+    }
+    textFile = window.URL.createObjectURL(data);
+    return textFile;
+  };
+  var create = document.getElementById('create');
+    textbox = document.getElementById('textbox');
+  create.addEventListener('click', function () {
+    var link = document.getElementById('downloadlink');
+    link.href = makeTextFile(thegcode);
+    link.style.display = 'block';
+  }, false);
+})();
+}//end update function
+
+function savegcode(zheight,layerheight,xloop,yloop,GooCoefficient,feedrate){//These variable names are the same as the globals passed into the function, not ideal.
+	xpath = [];
+	ypath = [];
+	zpath = [];
+	epath = [];
+	var z=0;
+	while (z<zheight){//For all layers (z coords)
+		z=z+parseFloat(layerheight);
+		xpath.push(xloop[0]);//adds first point
+		ypath.push(yloop[0]);
+		zpath.push(z);
+		var i=0
+		while (i<xloop.length-1){ //For all points in loop
+			i=i+1;
+			xpath.push(xloop[i]); //add point from xloop to xpath
+			ypath.push(yloop[i]);
+			zpath.push(z); //add z coordinate to zpath
+			}
+		}
+	var i=1;
+	epath.push(0);//Origin has 0 extruder position
+	epath.push(0); //First point in polygon has 0 extruder position
+	while (i<xpath.length-1){	
+		i=i+1;
+		var dx = xpath[i]-xpath[i-1];
+		var dy = ypath[i]-ypath[i-1];
+		var distance = Math.sqrt(dx*dx+dy*dy);
+		var estep = distance*GooCoefficient;
+		epath.push(epath[i-1]+estep);
+	}
+	var gcode = "G28 \nG21 \nG90 \nG92 E0 \nM82";
+	var i=0
+	gcode = gcode + "G1 X"+xpath[0];
+	gcode = gcode + " Y" + ypath[0];
+	gcode = gcode + " Z" + zpath[0];
+	gcode = gcode + " E" + epath[0];
+	gcode = gcode + " F"+feedrate+" \n"; //fixed feedrate 1200mm/min, 20mm/s
+
+	while (i<xpath.length-1){
+		i=i+1;
+		gcode = gcode + "G1 X"+xpath[i];
+		gcode = gcode + " Y" + ypath[i];
+		gcode = gcode + " Z" + zpath[i];
+		gcode = gcode + " E" + epath[i];
+		gcode = gcode + " F"+feedrate+" \n"; //fixed feedrate 1200mm/min, 20mm/s
+		}
+	return gcode;
+	}
+
+//////////////////////Mouse input handling//////////////////////////////////////////
+document.addEventListener("mousemove", mouseMoveHandler, false);
+function mouseMoveHandler(e) {
+	mousex = e.clientX;
+	mousey =  e.clientY;
+}
+document.addEventListener("mousedown", mouseDownHandler, false);
+function mouseDownHandler(e) {
+
+	}
+//document.addEventListener('click',(event) => {
+//    console.log('clicked');
+//});
+////////////////////////////////////////////////////////Keyboard input/////////////////////////////////////
+window.addEventListener("keydown", function (event) {
+  if (event.defaultPrevented) {
+    return; // Do nothing if the event was already processed
+  }
+  switch (event.key) { 
+
+	case "ArrowDown": //save gcode
+		cakelevel++;
+		if (cakelevel>=cakeids.length){cakelevel = 0;}
+     	break;
+	case "ArrowUp": 
+		cakelevel--;
+		if (cakelevel<0){cakelevel = cakeids.length-1;}
+    	  break;		  
+	case "-": 
+		if (scale>1){scale=scale-1;}
+		break;	  
+    default:
+      return; // Quit when this doesn't handle the key event.
+  } //end event key handling switch
+  event.preventDefault();// Cancel the default action to avoid it being handled twice
+}, true);	//end of event key handling, not clear what the ", true);" is about	
+
+
+    </script>
+            <p>	</p>
+        </div>
+        <div class="column" style="background-color:000000;">
+Modify Current Stage
+<br>
+<button onclick="cakehs[cakelevel+1] = parseFloat(document.getElementById('height2').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="height2" name="Height2">
+<label for="height2">Height i (mm)</label>
+<br>
+<button onclick="cakeids[cakelevel] = parseFloat(document.getElementById('radius1').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="radius1" name="Radius1">
+<label for="radius1">Inner Diameter i (mm)</label>
+<br>
+<button onclick="cakeods[cakelevel] = parseFloat(document.getElementById('radius2').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="radius2" name="Radius2">
+<label for="radius2">Outer Diameter i (mm)</label>
+<br>
+<br>
+Stage Selection, Creation, and Deletion
+<br>
+<button onclick="cakelevel++;
+	if (cakelevel>=cakeids.length)
+	{cakelevel = 0;}">Stage +</button>
+	<br>
+<button onclick="cakelevel--;
+	if (cakelevel<0)
+	{cakelevel = cakeids.length-1;}">Stage -</button>
+<br>
+<br>
+<button onclick="cakeids.push(cakeids[cakeids.length-1]);
+	cakeods.push(cakeods[cakeods.length-1]);
+	cakehs.push(cakehs[cakehs.length-1]+1);">Add Stage To Top</button>
+<br>
+<br>
+<button onclick="cakeids.splice(cakelevel,1);
+	cakeods.splice(cakelevel,1);
+	cakehs.splice(cakelevel+1,1);">Delete Selected Stage</button>
+<br>
+<br>
+Global Settings	
+<br>
+<button onclick="centerx = parseFloat(document.getElementById('centerx').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="centerx" name="Centerx" value=100>
+<label for="centerx">Center X</label>
+<br>
+<button onclick="centery = parseFloat(document.getElementById('centery').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="centery" name="Centery" value=100>
+<label for="centery">Center Y</label>
+<br>
+<button onclick="cakehs[0] = parseFloat(document.getElementById('height1').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="height1" name="Height1" value=0>
+<label for="height1">Base Height (mm)</label>
+<br>
+<button onclick="layerheight = parseFloat(document.getElementById('layerheightnum').value);
+	GooCoefficient = layerheight * nozzle / filamentarea;
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="layerheightnum" name="Layer Height" value=0.5>
+<label for="layerheightnum">Layer Height (mm)</label>
+<br>
+<button onclick="nozzle = parseFloat(document.getElementById('nozzlenum').value);
+	GooCoefficient = layerheight * nozzle / filamentarea;
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="nozzlenum" name="Nozzle" value=1.0 >
+<label for="nozzlenum">Nozzle (mm)</label>
+<br>
+<button onclick="feedrate = parseFloat(document.getElementById('feednum').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="feednum" name="Feed" value=1200 >
+<label for="feednum">Feed Rate (mm/min)</label>
+<br>
+<button onclick="numsides = parseFloat(document.getElementById('numsides').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="numsides" name="Numsides" value=32>
+<label for="numsides">Number of Segments: </label>
+<br>
+<button onclick="htrans = parseFloat(document.getElementById('htrans').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="htrans" name="Htrans" value=1 min=0>
+<label for="htrans">Horizontal transition points</label>
+
+<br>
+<button onclick="vtrans = parseFloat(document.getElementById('vtrans').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,1,0,htrans,vtrans);
+	thepaths = firstcake.exportasarray();
+	thegcode = pathtogcode(thepaths);">Change</button>
+<input type="number" id="vtrans" name="Vtrans" value=4 min=0>
+<label for="vtrans">Vertical transition points</label>
+
+<br>
+<br>
+Generate or update G-code file for download and 3d printing.
+<br>
+<button id="create">Create a gcode file</button>
+<a download="NASMBprintme.gcode" id="downloadlink" style="display: none">Download</a>
+
+        </div>
+    </div>
+    <meta charset="UTF-8"> 
+    <title>NAS Compound Bushing Tool v5 by Andrew Kane</title>
+    <style></style>
+</head>
+Nozzle size will set the extrusion width.  Normally you want this equal too or a little bigger than your actual nozzle diameter.<br>
+Height one is the starting height--normally one layer height, but it can be a little more or less to tweak relative bed height. <br>
+Height one can also be set to higher values for special purposes like splicing gcode fragments or unusual machine setups.<br>
+Changes are not applied until the user clicks the "change" button next to the value. <br>
+The "Create a Gcode file" button creates a download link, click it to download a gcode file to print your object.<br>
+
+</html>
