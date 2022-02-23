@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style>
+	</style>
+</head>
+<body>
+Cak3d has two basic modes of operation:  Terraced, and Tapered.<br>
+Almost all of the features and controls work the same for both modes, but they do define parts differently.  Cak3d keeps track of your part separately in each mode, so you can work on one part of each type concurrently if you're into that sort of thing.<br>
+Cak3d has default shapes for both modes, which are intended to show what the mode does and help you get started on your part.  Both default parts start with a large OD single layer feature called "brim", which helps parts stick to the bed and warp less.  It's usually best to keep the brim even if you are deleting everything else to start from scratch.<br>
+Terraced mode can produce objects resembling a multi-layered cake, with the part having a base height, and each stage having a height, inner diameter (ID), and outer diameter (OD).<br>
+An individual stage essentially represents a short tube of material with the specified ID and OD, extending up to the specified height from the prior stage's height.  Height values for the stages are relative to machine 0, not to the start of the stage. <br>
+Side walls will always be vertical, and it's not advisable to try printing ANY overhang as will occur with a larger stage stacked atop a smaller stage.  <br>
+Tapered mode still defines each stage with a height, ID, and OD, but allows for sloped walls including overhangs by defining each stage as the end one segment and beginning of another.
+An individual stage essentially represents a 2d ring with specified ID and OD, placed in 3d space at the specified height.  The "base height" part setting will be ignored, with the bottom of the part being located by the height value of the 0th (first) stage.<br>
+Vertical surfaces are still possible with two sequential stages with the same ID and/or OD, horizontal surfaces are still possible with two sequential stages with the same height.<br>
+<br>
+Basic part geometry is controlled by selecting a stage, and changing it's ID, OD, and/or height.  You can also add a stage to the top, or delete the selected stage.<br>
+Selecting a stage can be done a few ways: using the up and down arrow keys, clicking the "Next stage" / "Previous stage" buttons, or, with "mouse selection" checked, by clicking near the stage you want to manipulate. <br>
+There is a chart of ID, OD, and Height values, with a rectangle indicating what stage is selected.  Also, if "drag ID" or "drag OD" is checked, the relevant points will be circled in yellow on the 2d side preview, even when mouse dragging is unchecked. <br>
+Stage ID, OD, and Height values can be manipulated directly by typing into the input fields near the top. You can also manipulate stages with "mouse dragging" enabled alongside "drag ID", "drag OD", and/or "drag height". Dragging ID and OD together usually works fine, but sometimes behaves oddly so is not recommended.  Similarly, using "mouse dragging" at the same time as "mouse selection" works most of the time, but is not recommended.<br>
+While dragging a stage, the change(s) will be previewed with a lime green circle and chart numbers updating live with mouse movement.  If you drag an ID less than 0 it will default to 1, and if you drag an OD less than the ID it will default to ID+1.  Height will similarly default to previous stage height + 1 if too small and next stage height -1 if too large.<br>
+<br>
+Printer settings and more nuanced aspects of the print path can be changed with the "Global Settings".<br>
+The "Center X" and "Center Y" refer to the machine coordinates at which the part will be centered<br>
+The "Base Height" and "Layer Height" refer to the starting height of terrace parts, and the z distance between layers.  Normally you want your base height to be 0, and layer height to be about half of your nozzle diameter.<br>
+The "Nozzle ID" normally refers to the actual size of the nozzle on your printer, but sometimes users may want to specify a slightly larger value here to make the math work better for whole number wall thickness.  The filament diameter similarly refers to the actual diameter of filament being used, but might be adjusted up or down by the user to tweak the amount of plastic flow. This is equivalent to adjusting the "flow rate" or "extrusion multiplier" on some slicers.<br>
+The "Feed Rate" is the speed at which your print-head will be instructed to move.  This is intended to remain constant in order to keep the rate of extrusion constant during the print. <br>
+The "Number of Segments" setting refers to the geometric approximation of circles used for the part.  Higher numbers lead to more accurate circles, but with larger files and slower processing.  Also note that changing this value has consequences for the htrans and vtrans effects.<br>
+The "Horizontal Transition" and "Vertical Transition" settings help smooth out seams between perimeters and layers.  Numbers are in points, not length units, so the size of a transition zone will be affected by the number of segments in the circle.<br>
+Both transitions use linear interpolation, between perimeters horizontally, and between layers vertically.  The vertical setting is especially important to keep your printer from slowing down significantly during layer changes. <br>
+<br>
+FAQ<br><br>
+Q: How do I undo?<br>
+A: Sorry I haven't implemented an undo function yet.  It's harder than it looks.<br>
+<br>
+Q: Will this break my printer?<br>
+A: Probably not, but maybe.  This software is still in development, and not every build gets physically tested with every possible setting.  Previewing your G-code for anomalies is still a good idea.<br>
+<br>
+Q: Is there anything that Terrace mode can do but Tapered mode can't? <br>
+A: No, but Terrace mode was developed first, and is still easier to use for some simple parts. <br>
+<br>
+Q:  How do I do a solid stage with no hole in the middle?<br>
+A:  Setting the ID to 1 or 2 mm will, in most cases, result in no hole on the actual part.  If not, you can set it all the way down to 0 with the direct keyboard input.  Generally you don't want to set your fake-ID smaller than you have to, as there is usually some overextrusion around those spots.<br>
+<br>
+Q: I 3d modelled my part in ____ and--<br>
+A: You can't import it here, you have to recreate it in cak3d to generate G-code. <br>
+<br>
+Q: Why use Cak3d instead of a conventional slicer?<br>
+A: In most cases, you shouldn't.  Conventional slicers can make printable g-code for most printers with a huge variety of shapes, including any shape that you can create in Cak3d.  However, conventional slicer programs often overcomplicate simple parts, resulting in travel moves, speed changes, print anomalies, and in extreme cases print failure.  Cak3d will ALWAYS create a continuous uninterrupted path for your part, resulting in faster, stronger, prints with fewer and smaller anomalies.  The difference is often most notable with extruders that struggle to start and stop quickly, like long bowden or paste extruders.  <br>
+<br>
+Q: Why is the print slowing down on layer change?  Wasn't Cak3d supposed to avoid speed changes?<br>
+A: Your printer has some speed and acceleration settings that Cak3d can't change and probably shouldn't.  Often, the Z-axis maximum acceleration or speed will force the whole printer to slow down during layer changes, HOWEVER this can be reduced or even eliminated by using a larger "Vertical Transition" value.  The Z-axis movement will be divided up between multiple segments, so that the printer doesn't need to move the Z axis as fast to keep up with the XY movement.<br>
+<br>
+
+</body>
+</html>
