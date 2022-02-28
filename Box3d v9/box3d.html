@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+    /* Set additional styling options for the columns*/
+    .column {
+    float: left;
+    }
+    .row:after {
+    content: "";
+    display: table;
+    clear: both;
+    }
+    </style>
+ </head>
+ <body>
+    <div class="row">
+        <div class="column" style="background-color:#FFFFFF; column-width: 800px;" id="canvascolumn">
+               <canvas id="gameCanvas" width="800" height="800"></canvas>
+<script type="text/javascript" src="rectperimeter.js"></script>	
+<script type="text/javascript" src="thickrectperimeter.js"></script>	
+<script type="text/javascript" src="tallthickrectperimeter.js"></script>
+<script type="text/javascript" src="solidrectperimeter.js"></script>	
+<script type="text/javascript" src="savegcode.js"></script>
+<script type="text/javascript" src="mouse.js"></script>
+<script type="text/javascript" src="keyboard.js"></script>
+<script type="text/javascript" src="pathtogcode.js"></script>
+<script>
+const FPS = 10;
+var canvas, context;
+canvas = document.getElementById("gameCanvas"); //canvas is the draw sauce.
+context = canvas.getContext("2d");
+setInterval(update, 1000 / FPS);// set up interval (game loop)
+function draw3dline(x1,y1,z1,x2,y2,z2,ox,oy,scale,linecolor){//Isometric view, where 1 unit of X, Y, and Z distance are equal on the screen
+	var cos30 =  Math.cos(Math.PI/6); //0.866
+	var sin30 = Math.sin(Math.PI/6); //0.5
+	var startx = ox+(x1*cos30-y1*cos30)*scale; //Origin x, to the right for x, left for y
+	var starty = oy-(z1+x1*sin30+y1*sin30)*scale; //Origin y, up for x, up for y
+	var endx = ox+(x2*cos30-y2*cos30)*scale;
+	var endy = oy-(z2+x2*sin30+y2*sin30)*scale;
+	context.strokeStyle = linecolor;
+	context.lineWidth = 2;//Math.floor(scale);
+	context.beginPath();
+	context.moveTo(startx,starty);
+	context.lineTo(endx,endy);
+	context.stroke();
+	}
+function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	var i=0;
+	var thered = 255;
+	var theblue = 0;
+	var colorchangerate = 255/(axpath.length);
+	while (i<axpath.length-1){
+		i=i+1;
+		var thecolor = "rgb(" + thered + ",0," + theblue + ")";
+		draw3dline(axpath[i-1],aypath[i-1],azpath[i-1],axpath[i],aypath[i],azpath[i],originx,originy,ascale,thecolor);
+		thered = Math.floor(255 - i*colorchangerate);
+		theblue = Math.floor(i*colorchangerate);
+		}
+	}
+var time=0;
+//var chartstarty = 0;
+//var lefthand = true;
+var mousex = 0;
+var mousey = 0;
+var	mousedx = 0;
+var	mousedy = 0;
+var mousedownx = 0;
+var mousedowny = 0;
+var mousedragging = false;
+var dragclick = false;
+var centerx = 100;
+var centery = 100;
+var boxx = 50; //x size of box;
+var boxy = 60; //y size of box;
+var boxh = 32; //total height of box
+var previewx = 400;
+var previewy = 900;
+var toppreviewx = 400;
+var toppreviewy = 200;
+//var sidepreviewx = 400;
+//var sidepreviewy = 500;
+var animspeed = 2;
+var animlength = 8;
+var scale = 2; //number of pixels per millimeter
+var xloop = []; //X and Y points for active loop 
+var yloop = []; //A loop represents 1 layer.
+var gcode = "";
+var layerheight = 0.5;
+var z = 0; //First layer is 1 layer in Z
+//var rad1= 12;
+//var rad2 = 32;
+var baseheight = 0;
+var zheight = 16;
+var nozzle = 1;
+var filament = 1.75;
+var filamentarea = filament * filament * 3.14159 / 4.0;
+var GooCoefficient = layerheight * nozzle / filamentarea;
+var feedrate = 1200;
+//var tool = 0; //0 is add point, 1 is add fill, 2 is insert point
+//var fillstartx = 0; //These are for the rectangle fill
+//var fillstarty = 0;
+//var fillsizex = 0;
+//var fillsizey = 0;
+var xpath = [];
+var ypath = [];
+var zpath = [];
+var epath = [];
+var numsides = 8;//For corner fillets
+var htrans = 2;
+var vtrans = 4;
+//var partclass = 0; //0 for Bushing Cake, 1 for Tapered Bushing Cake
+//var thebushing = new Bushing(centerx,centery,rad1,rad2,baseheight,zheight,nozzle,layerheight,numsides,GooCoefficient,feedrate,1,0,htrans,vtrans);
+var thepaths = [];//thebushing.exportasarray();
+var thegcode = "";//pathtogcode(thepaths);
+//var cakeids = [12,12,16];
+//var cakeods = [40,30,20];
+//var cakehs = [0,0.5,16,32];
+//var cakelevel = 0;
+//var currentcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+//var pastcake = currentcake;
+
+//var tcakeids = [12,12,12,12,12,24];
+//var tcakeods = [40,40,32,24,24,32];
+//var tcakehs = [0,0.5,0.5,16,40,64];
+//var thetapercake = new TaperCake(centerx,centery,tcakeids,tcakeods,tcakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+
+function freshbox(){
+		currentbox = new Box(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);
+		thepaths = currentcake.exportasarray();
+		thegcode = pathtogcode(thepaths);
+	}
+function freshstagevalues(){//fix all this
+		document.getElementById('radius1').value = cakeids[cakelevel]; 
+		document.getElementById('radius2').value = cakeods[cakelevel]; 
+		document.getElementById('height2').value = cakehs[cakelevel+1];
+	}
+//freshstagevalues(); //This function doesn't work until later in the file.  
+function freshsettingvalues(){ //Refreshes global setting HTML element values to match program variables.
+		document.getElementById('centerx').value = centerx;
+		document.getElementById('centery').value = centery;
+		document.getElementById('height1').value = cakehs[0];
+		document.getElementById('layerheightnum').value = layerheight;
+		document.getElementById('nozzlenum').value = nozzle;
+		document.getElementById('filamentnum').value = filament;
+		document.getElementById('feednum').value = feedrate;
+		document.getElementById('numsides').value = numsides;
+		document.getElementById('htrans').value = htrans;
+		document.getElementById('vtrans').value = vtrans;
+	}
+	//freshsettingvalues(); //This function doesn't work until later in the file. 
+var testbox = new Rectperimeter(centerx,centery,50,70,8,0,1,0.5,8,0,1200,1,0);//constructor(x,y,xsize,ysize,radius,h,dr,dz,n,g,f,dir,estart){/
+
+var testbox2 = new Thickrectperimeter(centerx,centery,30,60,5,8,0,1,6.5,8,0,1200,1,0)//constructor(x,y,xsize,ysize,numthick,radius,h,dr,dz,n,g,f,dir,estart){
+var testbox3 = new Thickrectperimeter(centerx,centery,30,60,5,8,6.5,1,6.5,8,0,1200,-1,0)//constructor(x,y,xsize,ysize,numthick,radius,h,dr,dz,n,g,f,dir,estart){
+var testbox4 = new Thickrectperimeter(centerx,centery,30,60,5,8,13,1,6.5,8,0,1200,1,0)//constructor(x,y,xsize,ysize,numthick,radius,h,dr,dz,n,g,f,dir,estart){
+
+var testbox5 = new Tallthickrectperimeter(centerx,centery,30,60,5,8,0,20,1,0.5,8,0.1,1200,1,0)///onstructor(x,y,xsize,ysize,numthick,radius,h1,h2,dr,dz,n,g,f,dir,estart){//n is segments per corner, g is extruder distance per travel, f is feedrate
+console.log(testbox5.xpath);
+console.log(testbox5.ypath);
+console.log(testbox5.zpath);
+
+var testbox6 = new Solidrectperimeter(centerx,centery,30,60,8,0,1,0.5,8,0.1,1200,1,0);//	constructor(x,y,xsize,ysize,radius,h,dr,dz,n,g,f,dir,estart){/
+function update() {
+	time++;
+	//console.log(centerx);
+	//if (time==2){freshstagevalues(); }//dumb hack
+	//var cbpv2ds = document.getElementById("pv2ds").checked;
+	//var cbpv2dt = document.getElementById("pv2dt").checked;
+	//var cbpv3d = document.getElementById("pv3d").checked;
+	//height = document.getElementById('heightnum');
+	context.fillStyle = "black";//Background is black
+	context.fillRect(0, 0, canvas.width, canvas.height); //rectangle the size of the canvas.
+	context.fillStyle = "white";
+	context.font = "14px Ariel";
+	context.fillText("Stage",10,40);		
+	context.fillText("ID ",60,40);
+	context.fillText("OD ",110,40);
+	context.fillText("Height ",160,40);
+	context.fillText("i = "+(animspeed*time),canvas.width-64,32);
+	//draw3dpath(testbox.xpath,testbox.ypath,testbox.zpath,400,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	//draw3dpath(testbox2.xpath,testbox2.ypath,testbox2.zpath,400,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	//draw3dpath(testbox3.xpath,testbox3.ypath,testbox3.zpath,400,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	//draw3dpath(testbox4.xpath,testbox4.ypath,testbox4.zpath,400,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	//draw3dpath(testbox3.xpath,testbox3.ypath,testbox3.zpath,200,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	//draw3dpath(testbox4.xpath,testbox4.ypath,testbox4.zpath,600,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	
+	draw3dpath(testbox5.xpath,testbox5.ypath,testbox5.zpath,400,800,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+	draw3dpath(testbox6.xpath,testbox6.ypath,testbox6.zpath,400,600,4,"brown");//function draw3dpath(axpath,aypath,azpath,originx,originy,ascale,acolor){
+(function () {//This all seems like it should be outside the loop, but it only works if inside.
+var textFile = null,
+  makeTextFile = function (text) {
+    var data = new Blob([text], {type: 'text/plain'});
+    // If we are replacing a previously generated file we need to
+    // manually revoke the object URL to avoid memory leaks.
+    if (textFile !== null) {
+      window.URL.revokeObjectURL(textFile);
+    }
+    textFile = window.URL.createObjectURL(data);
+    return textFile;
+  };
+  var create = document.getElementById('create');
+    textbox = document.getElementById('textbox');
+  create.addEventListener('click', function () {
+    var link = document.getElementById('downloadlink');
+    link.href = makeTextFile(thegcode);
+    link.style.display = 'block';
+  }, false);
+})();
+}//end update function
+</script>
+
+        </div>
+        <div class="column" style="background-color:000000;">
+			
+<br>
+Modify Basic Dimensions
+<br>
+
+<br>
+<button onclick="boxx = parseFloat(document.getElementById('boxwidth').value);">Change</button>
+<input type="number" id="boxwidth" name="BoxWidth" style="width: 6em">
+<label for="boxwidth">Box Width (mm on X-axis)</label>
+<br>
+<button onclick="boxy = parseFloat(document.getElementById('boxdepth').value);">Change</button>
+<input type="number" id="boxdepth" name="BoxDepth" style="width: 6em">
+<label for="boxdepth">Box Depth (mm on Y-axis)</label>
+<br>
+<button onclick="boxh = parseFloat(document.getElementById('height2').value);">Change</button>
+<input type="number" id="height" name="Height" style="width: 6em">
+<label for="height">Box Height (mm including lid)</label>
+<br>
+<button onclick="centerx = parseFloat(document.getElementById('centerx').value);
+	freshcake();">Change</button>
+<input type="number" id="centerx" name="Centerx" style="width: 6em" value=100>
+<label for="centerx" style="width: 144px; display: inline-block;">Center X</label>
+<br>
+<button onclick="centery = parseFloat(document.getElementById('centery').value);
+	freshcake();">Change</button>
+<input type="number" id="centery" name="Centery"style="width: 6em" value=100>
+<label for="centery">Center Y</label>
+<br>
+<br>
+<input type="checkbox" id="mdrag" name="DragON" value="YES">
+<label for="mdrag" style="width: 144px;"">Mouse Drag Selected</label>
+<input type="checkbox" id="mselect" name="MouseSelect" value="YES">
+<label for="mselect" >Mouse Selection **WIP**</label>
+<br>
+<input type="checkbox" id="mdid" name="DragID" value="YES">
+<label for="mdid"> Drag ID</label>
+<input type="checkbox" id="mdod" name="DragOD" value="YES">
+<label for="mdod"> Drag OD</label>
+<input type="checkbox" id="mdh" name="DragHeight" value="YES">
+<label for="mdh"> Drag Height</label>
+<br>
+Print Settings <br>
+<button onclick="baseheight= parseFloat(document.getElementById('height1').value);
+	freshcake();">Change</button>
+<input type="number" id="height1" name="Height1" style="width: 6em" value=0>
+<label for="height1" style="width: 144px; display: inline-block;">Base Height (mm)</label>
+
+<button onclick="layerheight = parseFloat(document.getElementById('layerheightnum').value);
+	GooCoefficient = layerheight * nozzle / filamentarea;
+	freshcake();">Change</button>
+<input type="number" id="layerheightnum" name="Layer Height" style="width: 6em" value=0.5>
+<label for="layerheightnum">Layer Height (mm)</label>
+<br>
+<button onclick="nozzle = parseFloat(document.getElementById('nozzlenum').value);
+	GooCoefficient = layerheight * nozzle / filamentarea;
+	freshcake();">Change</button>
+<input type="number" id="nozzlenum" name="Nozzle" style="width: 6em" value=1.0 >
+<label for="nozzlenum" style="width: 144px; display: inline-block;">Nozzle ID (mm)</label>
+
+<button onclick="filament = parseFloat(document.getElementById('filamentnum').value);
+	filamentarea = filament * filament * 3.14159 / 4.0;
+	GooCoefficient = layerheight * nozzle / filamentarea;
+	freshcake();">Change</button>
+<input type="number" id="filamentnum" name="Filament" style="width: 6em" value=1.75 >
+<label for="filamentenum">Filament OD (mm)</label>
+<br>
+<button onclick="feedrate = parseFloat(document.getElementById('feednum').value);
+	freshcake();">Change</button>
+<input type="number" id="feednum" name="Feed" style="width: 6em" value=1200 >
+<label for="feednum">Feed Rate (mm/min)</label>
+<br>
+<button onclick="numsides = parseFloat(document.getElementById('numsides').value);
+	freshcake();">Change</button>
+<input type="number" id="numsides" name="Numsides" style="width: 6em"value=32>
+<label for="numsides">Number of Segments: </label>
+<br>
+<button onclick="htrans = parseFloat(document.getElementById('htrans').value);
+	freshcake();">Change</button>
+<input type="number" id="htrans" name="Htrans" style="width: 6em" value=2 min=0>
+<label for="htrans" style="width: 144px; display: inline-block;">Horizontal transition</label>
+
+<button onclick="vtrans = parseFloat(document.getElementById('vtrans').value);
+	freshcake();">Change</button>
+<input type="number" id="vtrans" name="Vtrans" style="width: 6em" value=4 min=0>
+<label for="vtrans">Vertical transition</label>
+<br>
+<button onclick="freshsettingvalues();">refresh settings</button>
+
+<br>
+<br>
+<br>
+Preview Settings<br>
+
+<input type="checkbox" id="pv2dt" name="TopPreview" value="YES" checked>
+<label for="pv2dt"> 2d Top</label>
+<input type="checkbox" id="pv3d" name="Preview3d" value="YES" checked>
+<label for="pv3d"> 3d iso</label><br>
+<button onclick="scale = parseFloat(document.getElementById('scale').value);">Change</button>
+<input type="number" id="scale" name="ps" style="width: 6em" value=2>
+<label for="scale">Preview scale</label>
+<br>
+<button onclick="previewx = parseFloat(document.getElementById('previewx').value);">Change</button>
+<input type="number" id="previewx" name="px" style="width: 6em" value=400>
+<label for="previewx" style="width: 144px; display: inline-block;">3D Origin X</label>
+
+<button onclick="previewy = parseFloat(document.getElementById('previewy').value);">Change</button>
+<input type="number" id="previewy" name="py" style="width: 6em" value=900>
+<label for="previewy">3D Origin Y</label>
+<br>
+<button onclick="toppreviewx = parseFloat(document.getElementById('toppreviewx').value);">Change</button>
+<input type="number" id="toppreviewx" name="tpx" style="width: 6em" value=400>
+<label for="toppreviewx" style="width: 144px; display: inline-block;">2D Top Origin X</label>
+
+<button onclick="toppreviewy = parseFloat(document.getElementById('toppreviewy').value);">Change</button>
+<input type="number" id="toppreviewy" name="tpy" style="width: 6em" value=200>
+<label for="toppreviewy">2D Top Origin Y</label>
+<br>
+
+<button onclick="animspeed = parseFloat(document.getElementById('aspeed').value);
+	firstcake = new Cake(centerx,centery,cakeids,cakeods,cakehs,nozzle,layerheight,numsides,GooCoefficient,feedrate,-1,0,htrans,vtrans);">Change</button>
+<input type="number" id="aspeed" name="as" style="width: 6em" value=2 min=0>
+<label for="aspeed" style="width: 144px; display: inline-block;">Speed</label>
+
+<button onclick="animlength = parseFloat(document.getElementById('alength').value);">Change</button>
+<input type="number" id="alength" name="al" style="width: 6em" value=8 min=1>
+<label for="alength" >Path length</label>
+<br>
+<button onclick="time=Math.floor(parseInt(document.getElementById('jumpi').value)/animspeed)">Jump</button>
+<input type="number" id="jumpi" name="ji" style="width: 6em" value=0 min=0>
+<label for="jumpi">Jump to this segment in path</label>
+<br>
+
+<button onclick="scale = 2;
+	previewx = 400;
+	previewy = 900;
+	toppreviewx = 400;
+	toppreviewy = 200;
+	animspeed = 2;
+	animlength = 8;
+	scale = 2; //number of pixels per millimeter
+	time = 1;
+	freshstagevalues();">Default Preview</button>
+Reset all preview settings and restart animation
+<br>
+<button onclick="scale = 2;
+	previewx = 300;
+	previewy = 800;
+	toppreviewx = 300;
+	toppreviewy = 100;
+	animspeed = 2;
+	animlength = 8;
+	scale = 2; //number of pixels per millimeter
+	time = 1;
+	freshstagevalues();">Mouse Edit Preview</button>
+
+Set recommended preview for mouse drag editing
+<br>
+<br>
+Generate or update G-code file for download and 3d printing.
+<br>
+<button id="create">Create a gcode file</button>
+<a download="NASMBprintme.gcode" id="downloadlink" style="display: none">Download</a>
+
+        </div>
+    </div>
+    <meta charset="UTF-8"> 
+    <title>Box3d v5 by Andrew Kane</title>
+    <style></style>
+</head>
+<a href="box3dhelp.html">Help</a>
+
+</html>
